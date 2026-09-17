@@ -1,20 +1,20 @@
 # Recursion — Interactive C++ Pointer & Memory Visualizer
 
-A fast, client-side, real-time C++ pointer, data structure, and dynamic memory visualizer. As you write C++ code, it interprets execution step-by-step and automatically renders live SVG memory diagrams showing nodes, pointers, tree hierarchies, stack frames, and heap allocations.
+A client-side, real-time C++ pointer, data structure, and dynamic memory visualizer. As you write C++ code, the engine simulates execution step-by-step and automatically renders SVG memory diagrams showing nodes, pointer links, tree hierarchies, stack frames, and heap allocations.
 
 ---
 
-## 🚀 Quick Start (Running Locally)
+## Quick Start (Running Locally)
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (v16 or higher)
 
 ### Run with Vite Dev Server
 ```bash
-# 1. Install dependencies (only Vite is required)
+# 1. Install dependencies
 npm install
 
-# 2. Start local server
+# 2. Start local development server
 npm run dev
 ```
 Open **`http://localhost:3000`** in your browser.
@@ -23,88 +23,86 @@ Open **`http://localhost:3000`** in your browser.
 
 ---
 
-## 📖 How to Use the Visualizer
+## User Guide
 
-### 1. Select a Pre-Built Algorithm or Start Blank
-- **Algorithm Preset Dropdown**: Choose from 18+ categorized algorithms across:
+### 1. Selecting an Algorithm or Blank Scratchpad
+- **Algorithm Preset Dropdown**: Access 18+ pre-configured algorithms categorized by data structure:
   - **Singly Linked Lists**: Reverse List (LC 206), Cycle Detection (LC 141), Middle of List (LC 876), Swap Pairs (LC 24), Remove N-th Node (LC 19), Palindrome List (LC 234).
-  - **Doubly Linked Lists**: Insert & Link Nodes with `prev` & `next` pointers.
+  - **Doubly Linked Lists**: Insert & Link Nodes with bidirectional pointers.
   - **Binary Trees**: Invert Tree (LC 226), Max Depth (LC 104), Search BST (LC 700), Insert into BST (LC 701), Tree Max via Recursion.
-  - **Pointers & Dynamic Memory**: `new` and `delete` lifecycle, memory leak warnings, Stack (LIFO), Queue (FIFO).
+  - **Pointers & Dynamic Memory**: Dynamic allocation with `new` and `delete`, memory leak detection, Stack (LIFO), Queue (FIFO).
   - **Modern Language Features**: Partition demo with `do...while` loops and ternary expressions (`? :`).
-- **+ Blank Scratchpad**: Open a clean slate to write custom C++ code from scratch without pre-existing templates.
-- **Browse Examples**: Click to open a searchable catalog modal filtered by categories.
+- **+ Blank Scratchpad**: Open an empty workspace to write custom C++ code from scratch.
+- **Browse Examples**: Open a modal catalog to search and filter presets by category.
 
 ### 2. Writing C++ Code in the Editor
-- **Live Execution**: Every code change automatically compiles, runs, and renders the diagram in real time.
+- **Live Re-Simulation**: Code edits trigger automatic re-parsing, interpretation, and diagram rendering.
 - **Syntax Highlighting**: Real-time coloring for keywords, types, numbers, strings, and comments.
-- **IntelliSense Autocomplete**: Type keywords like `ListNode`, `TreeNode`, `new`, or access fields via `->` and `.` to get instant autocomplete suggestions (`Tab` or `Enter` to select).
-- **1-Click Snippets Toolbar**: Click buttons above the editor (`curr = curr->next;`, `ListNode* temp = ...;`, etc.) to insert common pointer patterns directly at your cursor.
-- **Auto Bracket Matching**: Automatically completes `()`, `{}`, and `[]`.
+- **IntelliSense Autocomplete**: Type prefixes like `ListNode`, `TreeNode`, `new`, or member operators (`->`, `.`) to trigger completions (`Tab` or `Enter` to insert).
+- **Snippets Toolbar**: Insert common pointer manipulation patterns directly at the caret position.
+- **Bracket Pair Matching**: Auto-closes parentheses, braces, and square brackets.
 
 ### 3. Step-by-Step Execution Scrubber
-- **Play / Pause (`Space`)**: Run the execution animation automatically.
-- **Next (`Right Arrow`) / Prev (`Left Arrow`)**: Step forward or backward one execution line at a time.
-- **Reset (`R`)**: Jump back to Step 0 (initial state).
-- **Timeline Slider**: Drag the scrubber to instantly navigate to any step in the algorithm's lifecycle.
-- **Speed Selector**: Adjust playback speed from `0.5x` to `3.0x`.
-- **Explanation Banner**: Reads out human-friendly commentary of the exact pointer action happening at each step (e.g. `head->next = prev;`, `Dynamically allocated node n2`, `delete oldHead`).
+- **Play / Pause (`Space`)**: Animate execution step-by-step.
+- **Next (`Right Arrow`) / Prev (`Left Arrow`)**: Step forward or backward by one statement.
+- **Reset (`R`)**: Return to Step 0 (initial state).
+- **Timeline Slider**: Scrub to any execution snapshot.
+- **Speed Selector**: Set animation speed from `0.5x` to `3.0x`.
+- **Explanation Banner**: Displays a breakdown of the specific pointer assignment or memory action occurring at each step.
 
 ### 4. Interactive Diagram Canvas
-- **Pan**: Click and drag anywhere on the canvas background to pan.
-- **Zoom**: Use the `+` / `−` zoom buttons or reset view with the `Reset View` button.
-- **Node Badges**: Pointer variables (`head`, `curr`, `slow`, `fast`, `prev`, etc.) float above the target node in real time.
-- **Memory Leak Warnings**: If a node is allocated on the heap but loses all incoming references without `delete`, it is highlighted in amber as a memory leak.
-- **Freed Tombstones**: Calling `delete ptr;` turns the node into a red dashed tombstone showing that memory was returned.
+- **Pan**: Click and drag on the canvas to move the viewport.
+- **Zoom**: Use the `+` and `−` buttons, or click `Reset View` to center the diagram.
+- **Pointer Badges**: Pointers (`head`, `curr`, `slow`, `fast`, `prev`, etc.) float above target nodes in real time.
+- **Memory Leak Detector**: Orphaned heap nodes lacking active pointer references are highlighted in amber.
+- **Deallocation Indicators**: Freed nodes (`delete ptr;`) display tombstone styling indicating returned memory.
 
 ### 5. Virtual Call Stack & Memory Inspector
-- Displays active stack frames top-to-bottom.
-- In recursive algorithms (e.g., Tree Inversion, Tree Max), see stack frames push on recursive descent and pop on return.
-- Shows local variables, parameter values, pointer memory addresses (`&n0`), and heap allocation counts.
+- Displays active stack frames top-down.
+- Inspect recursive call stacks (e.g., Tree Inversion, Tree Max) as frames push on entry and pop on return.
+- Inspect local variables, parameters, pointer references (`&n0`), and active allocation metrics.
 
 ### 6. Cursor Line Synchronization
-- Check **Follow Cursor** to sync the memory visualization to whichever line your cursor is clicked on in the code editor.
+- Toggle **Follow Cursor** to automatically synchronize the memory diagram to the line where your cursor is positioned.
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## Keyboard Shortcuts
 
-| Key | Action |
+| Shortcut | Description |
 |---|---|
 | `Space` | Play / Pause execution |
 | `Right Arrow` | Step forward |
 | `Left Arrow` | Step backward |
 | `R` | Reset to step 0 |
-| `Tab` / `Enter` | Accept autocomplete suggestion |
-| `Escape` | Close autocomplete / Close examples modal |
+| `Tab` / `Enter` | Accept autocomplete recommendation |
+| `Escape` | Dismiss autocomplete popup / close modal |
 
 ---
 
-## 🌐 Free 1-Click Deployment Guide
+## Free Hosting & Deployment
 
-Because this application runs entirely client-side using standard web technologies, it can be hosted for free with zero configuration:
+This visualizer runs entirely in the browser and requires no backend server.
 
-### Option A: GitHub Pages (Recommended)
+### Option A: GitHub Pages
 1. Push this repository to GitHub.
-2. Go to your repository **Settings** → **Pages**.
-3. Under **Build and deployment** → **Source**, select **GitHub Actions** or **Deploy from a branch**.
-   - If deploying from branch: Select `main` branch and folder `/dist` (after running `npm run build`), or configure GitHub Pages action for Vite.
+2. In your repository on GitHub, navigate to **Settings** > **Pages**.
+3. Under **Build and deployment** > **Source**, select **GitHub Actions**.
+4. The included workflow (`.github/workflows/deploy.yml`) automatically builds and publishes the site to `https://<username>.github.io/<repo>/`.
 
-### Option B: Vercel (1-Click Free Hosting)
-1. Go to [vercel.com](https://vercel.com) and sign in with GitHub.
-2. Click **Add New Project** and import `ptr_visualizer`.
-3. Vercel automatically detects Vite:
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-4. Click **Deploy** — your live URL is ready in seconds!
+### Option B: Vercel
+1. Visit [vercel.com](https://vercel.com) and log in with GitHub.
+2. Import the repository.
+3. Keep default settings (Vite build: `npm run build`, output: `dist`).
+4. Click **Deploy**.
 
 ### Option C: Netlify
-1. Go to [netlify.com](https://netlify.com) and click **Import from Git**.
-2. Select your `ptr_visualizer` repository.
-3. Build command: `npm run build`, Publish directory: `dist`.
-4. Click **Deploy Site**.
+1. Log in to [netlify.com](https://netlify.com) and import the repository.
+2. Set build command to `npm run build` and publish directory to `dist`.
+3. Click **Deploy Site**.
 
 ---
 
-## 📄 License
-MIT License. Free for educational and personal use.
+## License
+
+MIT License. Free for personal, academic, and open-source use.

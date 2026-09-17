@@ -1,0 +1,15 @@
+# Node dependencies
+node_modules/
+
+# Production output
+dist/
+
+# AI Internal Engine Guide (User excluded from repo)
+AI_ENGINE_GUIDE.md
+
+# Operating System & IDE files
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

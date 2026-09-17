@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Interactive Live C++ Pointer & Memory Visualizer for Linked Lists, Doubly Linked Lists, and Binary Trees.">
+  <title>PtrViz — Live C++ Pointer & Memory Visualizer</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Modular Stylesheets -->
+  <link rel="stylesheet" href="./styles/main.css">
+  <link rel="stylesheet" href="./styles/editor.css">
+  <link rel="stylesheet" href="./styles/autocomplete.css">
+  <link rel="stylesheet" href="./styles/canvas.css">
+  <link rel="stylesheet" href="./styles/memory.css">
+  <link rel="stylesheet" href="./styles/highlight.css">
+  <link rel="stylesheet" href="./styles/examples.css">
+</head>
+
+<body>
+
+  <!-- Top Navigation & Configuration Bar -->
+  <header id="topbar">
+    <div class="brand-wrap" title="Recursion">
+      <div class="recursion-logo" title="Recursion">
+        <svg width="26" height="26" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Outer recursive loop -->
+          <path d="M23.5 14C23.5 19.2467 19.2467 23.5 14 23.5C8.75329 23.5 4.5 19.2467 4.5 14C4.5 8.75329 8.75329 4.5 14 4.5C17.3 4.5 20.2 6.2 21.9 8.8" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"/>
+          <polygon points="24,4 23.5,9.5 18,9" fill="#38bdf8"/>
+          <!-- Inner recursive call loop -->
+          <path d="M18.8 14C18.8 16.651 16.651 18.8 14 18.8C11.349 18.8 9.2 16.651 9.2 14C9.2 11.349 11.349 9.2 14 9.2C15.65 9.2 17.1 10.05 18 11.4" stroke="#818cf8" stroke-width="2" stroke-linecap="round"/>
+          <polygon points="19.5,8.2 19.1,12 15.5,11.5" fill="#818cf8"/>
+          <!-- Base case center core -->
+          <circle cx="14" cy="14" r="2.2" fill="#38bdf8"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="topbar-separator"></div>
+
+    <div class="field-group">
+      <label for="presetSelect">Algorithm Preset</label>
+      <select id="presetSelect" title="Select a pre-built C++ algorithm"></select>
+    </div>
+
+    <button id="newScratchpadBtn" class="btn-scratchpad" title="Open empty scratchpad to write C++ code from scratch">
+      + Blank Scratchpad
+    </button>
+
+    <button id="openExamplesBtn" class="btn-catalog" title="Open comprehensive C++ example library">
+      Browse Examples
+    </button>
+
+    <div class="field-group">
+      <label for="arrayInput">Initial Input Array</label>
+      <input type="text" id="arrayInput" spellcheck="false" placeholder="[1, 2, 3]">
+    </div>
+
+    <div id="extraFields"></div>
+
+    <div class="field-group">
+      <label>&nbsp;</label>
+      <button id="runBtn" class="btn-primary" title="Re-simulate execution manually">
+        Run / Build
+      </button>
+    </div>
+
+    <div id="presetInfo"></div>
+  </header>
+
+  <!-- Main Split Layout -->
+  <main id="mainarea">
+    <!-- Left Panel: Code Editor & Live Virtual Stack -->
+    <section id="leftpanel">
+      <!-- Code Editor Component -->
+      <div id="editorWrap">
+        <div class="panel-title">
+          <span>C++ Code Editor</span>
+          <div class="panel-title-group">
+            <label class="toggle-wrap" title="Sync memory visualizer to the line where your cursor is positioned">
+              <input type="checkbox" id="followCursorToggle" checked> Follow Cursor
+            </label>
+            <span id="parseStatus" class="status-pill status-ok">Live Ready</span>
+          </div>
+        </div>
+
+        <!-- Quick 1-Click C++ Snippets Toolbar -->
+        <div id="snippetsBar" title="Click to insert C++ pointer snippets at cursor"></div>
+
+        <div class="editor-scroll" id="editorScroll">
+          <div class="editor-flex">
+            <div class="line-numbers" id="lineNumbers"></div>
+            <div class="editor-body">
+              <div class="active-line" id="activeLine"></div>
+              <textarea id="codeInput" spellcheck="false" placeholder="// Write C++ code here..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Memory & Virtual Stack Panel -->
+      <div id="stackWrap">
+        <div class="panel-title">
+          <span>Virtual Call Stack</span>
+          <div id="memoryBadge"></div>
+        </div>
+        <div id="stackPanel"></div>
+      </div>
+    </section>
+
+    <!-- Right Panel: Interactive Memory & Pointer SVG Canvas -->
+    <section id="rightpanel">
+      <div id="warningBanner"></div>
+
+      <!-- Pan / Zoom Controls -->
+      <div id="canvasControls">
+        <button id="zoomInBtn" title="Zoom in (+)">+</button>
+        <button id="zoomOutBtn" title="Zoom out (−)">−</button>
+        <button id="zoomResetBtn" title="Reset view center">Reset View</button>
+      </div>
+
+      <!-- SVG Viewport -->
+      <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrowhead" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 Z" fill="#64748b"></path>
+          </marker>
+        </defs>
+        <g id="viewport"></g>
+      </svg>
+    </section>
+  </main>
+
+  <!-- Bottom Timeline & Step Scrubber Controls -->
+  <footer id="controls">
+    <div id="controlsRow">
+      <button id="resetBtn" class="icon-btn" title="Reset to initial state (R)">Reset</button>
+      <button id="prevBtn" class="icon-btn" title="Step backward (Left Arrow)">Prev</button>
+      <button id="playBtn" class="icon-btn btn-primary" title="Play / Pause simulation (Space)"><span
+          class="btn-text">Play</span></button>
+      <button id="nextBtn" class="icon-btn" title="Step forward (Right Arrow)">Next</button>
+
+      <select id="speedSelect" title="Playback speed multiplier">
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1.0x</option>
+        <option value="2">2.0x</option>
+        <option value="3">3.0x</option>
+      </select>
+
+      <input type="range" id="progress" min="0" max="0" value="0" step="1" title="Scrub execution timeline">
+      <span id="stepLabel">Step 0 / 0</span>
+    </div>
+
+    <div id="explanationBanner">Select a C++ algorithm or type code to view live memory diagrams.</div>
+  </footer>
+
+  <!-- C++ Examples Catalog Modal -->
+  <div id="exampleModal" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <h2>C++ Data Structure & Pointer Examples</h2>
+        </div>
+        <button id="closeModalBtn" class="modal-close-btn" title="Close">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-search-wrap">
+          <input type="text" id="exampleSearch" class="modal-search-input"
+            placeholder="Search algorithms (e.g. reverse, cycle, delete, tree, bst, dll)...">
+        </div>
+
+        <div id="exampleCategoryFilters" class="category-filters"></div>
+
+        <div id="examplesGrid" class="examples-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Script (ES Module) -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+
+</html>

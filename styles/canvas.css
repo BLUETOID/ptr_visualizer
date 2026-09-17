@@ -1,0 +1,189 @@
+/* ========================================================
+   CANVAS & SVG RENDERING
+   ======================================================== */
+svg#canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+
+svg#canvas.panning {
+  cursor: grabbing;
+}
+
+#canvasControls {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+}
+
+#canvasControls button {
+  padding: 5px 10px;
+  font-size: 14px;
+  background: var(--bg-2);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Node Transitions */
+.list-node,
+.tree-node,
+.badge,
+.null-anchor {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Singly / Doubly Linked List Nodes */
+.list-node .val-cell {
+  fill: #1e2433;
+  stroke: #475569;
+  stroke-width: 1.5;
+  transition: fill 0.25s, stroke 0.25s;
+}
+
+.list-node .ptr-cell {
+  fill: #161a26;
+  stroke: #475569;
+  stroke-width: 1.5;
+  transition: fill 0.25s, stroke 0.25s;
+}
+
+.list-node.stack-alloc .val-cell,
+.list-node.stack-alloc .ptr-cell {
+  stroke-dasharray: 4, 3;
+  stroke: #94a3b8;
+  fill: #1a202c;
+}
+
+.list-node .val-text {
+  fill: #f8fafc;
+  font: 700 15px var(--font-mono);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.list-node .ptr-dot {
+  fill: #94a3b8;
+  transition: fill 0.2s;
+}
+
+.list-node .label-text {
+  fill: #64748b;
+  font: 500 11px var(--font-mono);
+  text-anchor: middle;
+}
+
+.list-node .status-badge,
+.tree-node .status-badge {
+  font: 700 10px var(--font-mono);
+  text-anchor: middle;
+}
+
+/* Active Highlight */
+.list-node.node-active .val-cell,
+.list-node.node-active .ptr-cell {
+  stroke: #38bdf8;
+  stroke-width: 2.5;
+}
+
+/* Deleted / Freed Memory (Red dashed tombstone) */
+.list-node.node-freed .val-cell,
+.list-node.node-freed .ptr-cell,
+.tree-node.node-freed circle {
+  stroke: #ef4444 !important;
+  stroke-dasharray: 4, 3 !important;
+  fill: #2d1519 !important;
+  opacity: 0.6;
+}
+
+/* Memory Leak (Amber outline) */
+.list-node.node-leak .val-cell,
+.list-node.node-leak .ptr-cell,
+.tree-node.node-leak circle {
+  stroke: #f59e0b !important;
+  stroke-width: 2.5 !important;
+}
+
+/* Edges & Curved Paths */
+.edge-path {
+  fill: none;
+  stroke: #64748b;
+  stroke-width: 2;
+  transition: d 0.3s ease, stroke 0.2s;
+}
+
+.edge-path.flash,
+.list-node.flash .val-cell,
+.tree-node.flash circle {
+  stroke: #fbbf24 !important;
+  stroke-width: 3 !important;
+}
+
+/* Pointer Badges */
+.badge rect {
+  transition: fill 0.25s ease;
+}
+
+.badge text {
+  fill: #0b0d13;
+  font: 800 11px var(--font-mono);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* Nullptr Anchors */
+.null-anchor rect {
+  fill: #1a1622;
+  stroke: #8b5cf6;
+  stroke-width: 1.5;
+  stroke-dasharray: 3, 3;
+}
+
+.null-anchor text {
+  fill: #c4b5fd;
+  font: 600 12px var(--font-mono);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* Binary Tree Nodes */
+.tree-node circle {
+  fill: #1e2433;
+  stroke: #475569;
+  stroke-width: 2;
+  transition: fill 0.25s, stroke 0.25s;
+}
+
+.tree-node.node-active circle {
+  stroke: #38bdf8;
+  stroke-width: 3;
+}
+
+.tree-node .tree-val {
+  fill: #f8fafc;
+  font: 700 14px var(--font-mono);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.tree-node .tree-label {
+  fill: #64748b;
+  font: 500 11px var(--font-mono);
+  text-anchor: middle;
+}
+
+.null-stub line {
+  stroke: #475569;
+  stroke-width: 1.5;
+  stroke-dasharray: 2, 2;
+}
+
+.null-stub text {
+  fill: #64748b;
+  font: 12px var(--font-mono);
+  text-anchor: middle;
+}

@@ -252,6 +252,37 @@ void printNode(ListNode* head){
   console.error('  [FAIL] Failed user custom snippet test:', err.message);
 }
 
+// Test Standard C++ constructs: string, const, arrays, and std math/swap
+totalCount++;
+try {
+  const normalCpp = `
+#include <iostream>
+#include <string>
+#include <vector>
+using namespace std;
+
+int main(int argc, char* argv[]) {
+    string s = "visualizer";
+    const int x = 10;
+    int arr[3] = {1, 2, 3};
+    arr[0] = 99;
+    int a = 5, b = 20;
+    swap(a, b);
+    int m = max(a, b);
+    cout << s << " " << arr[0] << " " << m << endl;
+    return 0;
+}`;
+  const tokens = tokenize(normalCpp);
+  const ast = parseProgram(tokens);
+  resetEngineState({}, 0, 0);
+  const timeline = runProgram(ast.functions.main, [], ast.functions);
+  if (timeline.length < 5) throw new Error('Timeline too short for standard C++');
+  console.log('  [OK] Standard C++ Features Test: string, const, arrays, max/swap, and main(argc, argv).');
+  passedCount++;
+} catch (err) {
+  console.error('  [FAIL] Failed standard C++ features test:', err.message);
+}
+
 console.log(`\nVerification Completed: ${passedCount}/${totalCount} tests passed!`);
 if (passedCount !== totalCount) {
   process.exit(1);

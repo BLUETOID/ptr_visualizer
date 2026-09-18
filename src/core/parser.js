@@ -12,8 +12,9 @@ export class ParseError extends Error {
 }
 
 const KNOWN_TYPES = new Set([
-  'int', 'bool', 'void', 'long', 'double', 'float',
-  'ListNode', 'TreeNode', 'DoublyListNode', 'auto', 'char', 'unsigned', 'size_t'
+  'int', 'bool', 'void', 'long', 'double', 'float', 'short',
+  'ListNode', 'TreeNode', 'DoublyListNode', 'auto', 'char', 'unsigned', 'size_t',
+  'string', 'std::string', 'vector', 'std::vector', 'queue', 'stack', 'deque', 'set', 'map', 'pair'
 ]);
 
 function peek(p) {
@@ -110,9 +111,8 @@ export function parseProgram(tokens) {
     order.unshift('main');
   }
 
-  if (Object.keys(functions).length === 0 && tokens.length > 1) {
-    const firstErr = tokens[0];
-    throw new ParseError('Incomplete or invalid C++ syntax.', firstErr.line, firstErr.col);
+  if (Object.keys(functions).length === 0) {
+    return { functions, structs, order, isIncomplete: true };
   }
 
   return { functions, structs, order };
@@ -144,6 +144,11 @@ function parseStruct(p) {
 }
 
 function parseType(p) {
+  let isConst = false;
+  while (peek(p).value === 'const') {
+    next(p);
+    isConst = true;
+  }
   const t = next(p);
   if (t.type !== 'id') {
     throw new ParseError(`Expected type name near line ${t.line}`, t.line, t.col);
@@ -156,6 +161,23 @@ function parseType(p) {
       name += '::' + sub.value;
     }
   }
+  if (name === 'unsigned' || name === 'long') {
+    if (peek(p).type === 'id') {
+      name += ' ' + next(p).value;
+    }
+  }
+  if (peek(p).value === '<') {
+    next(p);
+    let depth = 1;
+    let tmpl = '<';
+    while (depth > 0 && peek(p).type !== 'eof') {
+      const tok = next(p);
+      tmpl += tok.value;
+      if (tok.value === '<') depth++;
+      else if (tok.value === '>') depth--;
+    }
+    name += tmpl;
+  }
   let pointer = false;
   let reference = false;
   while (peek(p).value === '*' || peek(p).value === '&') {
@@ -163,7 +185,11 @@ function parseType(p) {
     if (op === '*') pointer = true;
     if (op === '&') reference = true;
   }
-  return { name, pointer, reference, line: t.line, col: t.col };
+  while (peek(p).value === 'const') {
+    next(p);
+    isConst = true;
+  }
+  return { name, pointer, reference, isConst, line: t.line, col: t.col };
 }
 
 function parseFunctionDecl(p) {
@@ -181,7 +207,14 @@ function parseFunctionDecl(p) {
     if (n.type !== 'id') {
       throw new ParseError('Expected parameter name', n.line, n.col);
     }
-    params.push({ type: t, name: n.value, line: n.line });
+    let isArrayParam = false;
+    if (peek(p).value === '[') {
+      next(p);
+      if (peek(p).value !== ']') parseExpr(p);
+      expect(p, ']');
+      isArrayParam = true;
+    }
+    params.push({ type: t, name: n.value, isArray: isArrayParam, line: n.line });
     if (peek(p).value === ',') next(p);
     else break;
   }
@@ -217,6 +250,20 @@ function parseArgList(p) {
   return args;
 }
 
+function isLikelyType(p) {
+  const t = peek(p);
+  if (t.value === 'const') return true;
+  if (t.type !== 'id') return false;
+  if (KNOWN_TYPES.has(t.value)) return true;
+
+  const nextTok = p.tokens[p.pos + 1];
+  if (!nextTok) return false;
+  if (nextTok.value === '*' || nextTok.value === '&') return true;
+  if (nextTok.value === '<' || nextTok.value === '::') return true;
+  if (nextTok.type === 'id') return true;
+  return false;
+}
+
 function parseStmt(p) {
   const t = peek(p);
   if (t.value === '{') return { type: 'Block', body: parseBlock(p), line: t.line };
@@ -249,7 +296,7 @@ function parseStmt(p) {
   }
 
   // Variable declaration check
-  if (t.type === 'id' && KNOWN_TYPES.has(t.value)) {
+  if (isLikelyType(p)) {
     return parseVarDeclStmt(p);
   }
 
@@ -267,6 +314,17 @@ function parseVarDeclStmt(p) {
     throw new ParseError('Expected variable name', nameTok.line, nameTok.col);
   }
 
+  let isArray = false;
+  let arraySize = null;
+  if (peek(p).value === '[') {
+    next(p);
+    isArray = true;
+    if (peek(p).value !== ']') {
+      arraySize = parseExpr(p);
+    }
+    expect(p, ']');
+  }
+
   let init = null;
   let ctorArgs = null;
   if (peek(p).value === '(') {
@@ -275,12 +333,24 @@ function parseVarDeclStmt(p) {
     expect(p, ')');
   } else if (peek(p).value === '=') {
     next(p);
-    init = parseExpr(p);
+    if (peek(p).value === '{') {
+      next(p);
+      const elems = [];
+      while (peek(p).value !== '}' && peek(p).type !== 'eof') {
+        elems.push(parseExpr(p));
+        if (peek(p).value === ',') next(p);
+        else break;
+      }
+      expect(p, '}');
+      init = { type: 'ArrayInit', elements: elems, line: nameTok.line };
+    } else {
+      init = parseExpr(p);
+    }
   }
 
-  const decls = [{ name: nameTok.value, init, ctorArgs, isPointer: varType.pointer }];
+  const decls = [{ name: nameTok.value, init, ctorArgs, isPointer: varType.pointer, isArray, arraySize }];
 
-  // Support multiple declarations in same statement: ListNode *p = head, *q = nullptr;
+  // Support multiple declarations in same statement: int a = 1, b = 2;
   while (peek(p).value === ',') {
     next(p);
     let subPointer = varType.pointer;
@@ -290,6 +360,14 @@ function parseVarDeclStmt(p) {
     }
     const subNameTok = next(p);
     if (subNameTok.type !== 'id') throw new ParseError('Expected variable name after comma', subNameTok.line, subNameTok.col);
+    let subIsArray = false;
+    let subArraySize = null;
+    if (peek(p).value === '[') {
+      next(p);
+      subIsArray = true;
+      if (peek(p).value !== ']') subArraySize = parseExpr(p);
+      expect(p, ']');
+    }
     let subInit = null, subCtor = null;
     if (peek(p).value === '(') {
       next(p);
@@ -297,9 +375,21 @@ function parseVarDeclStmt(p) {
       expect(p, ')');
     } else if (peek(p).value === '=') {
       next(p);
-      subInit = parseExpr(p);
+      if (peek(p).value === '{') {
+        next(p);
+        const elems = [];
+        while (peek(p).value !== '}' && peek(p).type !== 'eof') {
+          elems.push(parseExpr(p));
+          if (peek(p).value === ',') next(p);
+          else break;
+        }
+        expect(p, '}');
+        subInit = { type: 'ArrayInit', elements: elems, line: subNameTok.line };
+      } else {
+        subInit = parseExpr(p);
+      }
     }
-    decls.push({ name: subNameTok.value, init: subInit, ctorArgs: subCtor, isPointer: subPointer });
+    decls.push({ name: subNameTok.value, init: subInit, ctorArgs: subCtor, isPointer: subPointer, isArray: subIsArray, arraySize: subArraySize });
   }
 
   expect(p, ';');
@@ -513,6 +603,11 @@ function parsePostfix(p) {
       const args = parseArgList(p);
       expect(p, ')');
       expr = { type: 'Call', callee: expr, args, line: expr.line };
+    } else if (v === '[') {
+      next(p);
+      const indexExpr = parseExpr(p);
+      expect(p, ']');
+      expr = { type: 'Index', obj: expr, index: indexExpr, line: expr.line };
     } else if (v === '++' || v === '--') {
       next(p);
       expr = { type: 'PostIncDec', op: v, arg: expr, line: expr.line };

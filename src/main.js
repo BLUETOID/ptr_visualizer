@@ -251,6 +251,17 @@ class App {
       ast = parseProgram(tokens);
     } catch (e) {
       const line = e.line || 1;
+      const isTypingIncomplete =
+        e.message.includes('Unexpected end of code') ||
+        e.message.includes('Incomplete') ||
+        (e.message.includes('Expected') && e.message.includes('EOF'));
+
+      if (isTypingIncomplete) {
+        this.editor.setStatus('Writing code...', 'pending');
+        this.controls.updateExplanation('Writing C++ code... Continue typing to visualize.', false);
+        return;
+      }
+
       this.editor.setStatus(`Syntax Error: L${line}`, 'error');
       this.editor.setActiveLine(line, true);
       this.controls.updateExplanation(`Syntax Error: ${e.message}`, true);
@@ -265,8 +276,8 @@ class App {
     else if (ast.order.length > 0) fn = ast.functions[ast.order[0]];
 
     if (!fn) {
-      this.editor.setStatus('No Function Found', 'pending');
-      this.controls.updateExplanation('Declare a function (e.g. void main() { ... }) to begin visualizing.');
+      this.editor.setStatus('Writing code...', 'pending');
+      this.controls.updateExplanation('Write a function (e.g. int main() { ... }) to begin visualizing.', false);
       return;
     }
 

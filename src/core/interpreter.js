@@ -102,6 +102,7 @@ function truthy(v) {
 
 export function valueDesc(v) {
   if (v === null || v === undefined) return 'nullptr';
+  if (Array.isArray(v)) return `[${v.map(valueDesc).join(', ')}]`;
   if (typeof v === 'number') return String(v);
   if (typeof v === 'boolean') return v ? 'true' : 'false';
   if (typeof v === 'string') {
@@ -110,7 +111,7 @@ export function valueDesc(v) {
       if (n.freed) return `[freed: ${v}]`;
       return `&${n.label || v} (val=${n.val})`;
     }
-    return v;
+    return `"${v}"`;
   }
   return String(v);
 }
@@ -124,6 +125,8 @@ export function exprToStr(n) {
     case 'String': return `"${n.value}"`;
     case 'Ident': return n.name;
     case 'Member': return `${exprToStr(n.obj)}->${n.field}`;
+    case 'Index': return `${exprToStr(n.obj)}[${exprToStr(n.index)}]`;
+    case 'ArrayInit': return `{${n.elements.map(exprToStr).join(', ')}}`;
     case 'AddressOf': return `&${exprToStr(n.arg)}`;
     case 'Deref': return `*${exprToStr(n.arg)}`;
     case 'New': return `new ${n.typeName}(${n.args.map(exprToStr).join(', ')})`;
@@ -251,10 +254,44 @@ function evalExpr(node) {
       const args = node.args.map(evalExpr);
       return allocNode(node.typeName, args.length ? args[0] : 0, {});
     }
+    case 'Index': {
+      const target = evalExpr(node.obj);
+      const idx = evalExpr(node.index);
+      if (Array.isArray(target)) {
+        return target[idx];
+      }
+      if (typeof target === 'string') {
+        return target[idx];
+      }
+      throw new InterpError(`Cannot index into non-array value`, node.line);
+    }
     case 'Call': {
       if (node.callee.type !== 'Ident') throw new InterpError('Function pointers not supported', node.line);
-      const fn = knownFunctions[node.callee.name];
-      if (!fn) throw new InterpError(`Undefined function '${node.callee.name}'`, node.line);
+      const rawName = node.callee.name;
+      const fnName = rawName.replace(/^std::/, '');
+      if (fnName === 'max') {
+        const args = node.args.map(evalExpr);
+        return Math.max(...args);
+      }
+      if (fnName === 'min') {
+        const args = node.args.map(evalExpr);
+        return Math.min(...args);
+      }
+      if (fnName === 'abs') {
+        const args = node.args.map(evalExpr);
+        return Math.abs(args[0]);
+      }
+      if (fnName === 'swap') {
+        if (node.args.length === 2) {
+          const v1 = evalExpr(node.args[0]);
+          const v2 = evalExpr(node.args[1]);
+          assignTo(node.args[0], v2, node.line);
+          assignTo(node.args[1], v1, node.line);
+          return;
+        }
+      }
+      const fn = knownFunctions[rawName] || knownFunctions[fnName];
+      if (!fn) throw new InterpError(`Undefined function '${rawName}'`, node.line);
       const args = node.args.map(evalExpr);
       return callFunction(fn, args, node.line);
     }
@@ -337,6 +374,15 @@ function assignTo(node, value, line) {
     }
     return;
   }
+  if (node.type === 'Index') {
+    const target = evalExpr(node.obj);
+    const idx = evalExpr(node.index);
+    if (Array.isArray(target)) {
+      target[idx] = value;
+      return;
+    }
+    throw new InterpError('Cannot assign to index of non-array', line);
+  }
   if (node.type === 'Member') {
     const base = evalExpr(node.obj);
     if (base === null || base === undefined) {
@@ -356,7 +402,16 @@ function assignTo(node, value, line) {
 function execVarDeclGroup(stmt) {
   for (const decl of stmt.decls) {
     let value, kind, desc, highlight = [];
-    if (decl.ctorArgs) {
+    if (decl.isArray) {
+      if (decl.init && decl.init.type === 'ArrayInit') {
+        value = decl.init.elements.map(evalExpr);
+      } else {
+        const size = decl.arraySize ? evalExpr(decl.arraySize) : 0;
+        value = new Array(size).fill(0);
+      }
+      kind = 'array';
+      desc = `${stmt.varType.name} ${decl.name}[] = ${valueDesc(value)}`;
+    } else if (decl.ctorArgs) {
       const args = decl.ctorArgs.map(evalExpr);
       const id = allocNode(stmt.varType.name, args.length ? args[0] : 0, {
         stackAllocated: true,
@@ -372,8 +427,16 @@ function execVarDeclGroup(stmt) {
       desc = `${decl.name} = ${decl.init ? exprToStr(decl.init) : 'nullptr'} → ${valueDesc(value)}`;
       if (typeof value === 'string') highlight = [value];
     } else {
-      value = decl.init ? evalExpr(decl.init) : 0;
-      kind = 'scalar';
+      if (decl.init) {
+        value = evalExpr(decl.init);
+      } else if (stmt.varType.name === 'string' || stmt.varType.name === 'std::string') {
+        value = '';
+      } else if (stmt.varType.name.startsWith('vector')) {
+        value = [];
+      } else {
+        value = 0;
+      }
+      kind = typeof value === 'object' ? 'object' : (typeof value === 'number' ? 'scalar' : 'string');
       desc = `${stmt.varType.name} ${decl.name} = ${valueDesc(value)}`;
     }
     setVar(decl.name, value, kind);

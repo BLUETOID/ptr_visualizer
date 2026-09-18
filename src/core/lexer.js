@@ -10,7 +10,7 @@ export function tokenize(src) {
   const isDigit = c => c >= '0' && c <= '9';
   const isIdStart = c => /[A-Za-z_]/.test(c);
   const isIdPart = c => /[A-Za-z0-9_]/.test(c);
-  const multi = ['->', '==', '!=', '<=', '>=', '&&', '||', '++', '--', '+=', '-='];
+  const multi = ['->', '::', '<<', '>>', '==', '!=', '<=', '>=', '&&', '||', '++', '--', '+=', '-='];
 
   while (i < src.length) {
     const c = src[i];

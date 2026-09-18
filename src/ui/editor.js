@@ -100,9 +100,15 @@ export class EditorManager {
       }
     });
 
-    // Handle scroll sync
+    // Handle scroll sync & prevent runaway internal textarea scroll
     this.codeInput.addEventListener('scroll', () => {
-      this.lineNumbers.scrollTop = this.codeInput.scrollTop;
+      if (this.codeInput.scrollTop > 0) {
+        this.editorScroll.scrollTop += this.codeInput.scrollTop;
+        this.codeInput.scrollTop = 0;
+      }
+      if (this.highlighter) {
+        this.highlighter.syncScroll();
+      }
     });
   }
 
@@ -154,13 +160,36 @@ export class EditorManager {
       }
       this.lineNumbers.innerHTML = html;
     }
-    this.codeInput.style.height = (lines.length * this.lineHeight + 60) + 'px';
+
+    let maxCols = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].length > maxCols) maxCols = lines[i].length;
+    }
+    const containerW = this.editorScroll ? Math.max(300, this.editorScroll.clientWidth - 65) : 400;
+    const computedW = Math.max(containerW, maxCols * 8.5 + 48);
+    const computedH = lines.length * this.lineHeight + 80;
+
+    this.codeInput.style.width = computedW + 'px';
+    this.codeInput.style.height = computedH + 'px';
+
+    if (this.highlighter && this.highlighter.overlay) {
+      this.highlighter.overlay.style.width = computedW + 'px';
+      this.highlighter.overlay.style.height = computedH + 'px';
+    }
+    if (this.activeLine) {
+      this.activeLine.style.width = computedW + 'px';
+    }
   }
 
-  setActiveLine(lineIndex, isError = false) {
+  setActiveLine(lineIndex, isError = false, forceScroll = false) {
     if (!lineIndex || lineIndex < 1) return;
     this.activeLine.style.top = (Math.max(0, lineIndex - 1) * this.lineHeight + 10) + 'px';
     this.activeLine.classList.toggle('error-line', !!isError);
+
+    // CRITICAL: If user is actively typing in codeInput, do NOT scroll away!
+    if (document.activeElement === this.codeInput && !forceScroll) {
+      return;
+    }
 
     // Auto scroll editor if active line is outside viewport
     const targetY = (lineIndex - 1) * this.lineHeight;

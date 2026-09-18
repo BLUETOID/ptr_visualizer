@@ -5,26 +5,38 @@
 export const COMPLETIONS = [
   // Types & Declarations
   { label: 'ListNode', text: 'ListNode* ', kind: 'type', detail: 'Singly linked list node pointer' },
+  { label: 'ListNode* head = new ListNode(0);', text: 'ListNode* head = new ListNode(${1:0});', kind: 'snippet', detail: 'Create head list node' },
+  { label: 'ListNode* node = new ListNode(val);', text: 'ListNode* ${1:node} = new ListNode(${2:val});', kind: 'snippet', detail: 'Allocate new list node' },
   { label: 'ListNode* curr = head;', text: 'ListNode* curr = head;', kind: 'snippet', detail: 'Initialize traversal pointer' },
   { label: 'ListNode* prev = nullptr;', text: 'ListNode* prev = nullptr;', kind: 'snippet', detail: 'Initialize predecessor pointer' },
   { label: 'ListNode* next = curr->next;', text: 'ListNode* next = curr->next;', kind: 'snippet', detail: 'Save next node reference' },
   { label: 'ListNode dummy(0);', text: 'ListNode dummy(0);\ndummy.next = head;', kind: 'snippet', detail: 'Stack-allocated dummy head pattern' },
   { label: 'ListNode(val)', text: 'ListNode(${1:val})', kind: 'constructor', detail: 'Node constructor' },
+  { label: 'struct ListNode', text: 'struct ListNode {\n    int val;\n    ListNode* next;\n};', kind: 'snippet', detail: 'Singly linked list node definition' },
   
   { label: 'TreeNode', text: 'TreeNode* ', kind: 'type', detail: 'Binary tree node pointer' },
   { label: 'TreeNode* curr = root;', text: 'TreeNode* curr = root;', kind: 'snippet', detail: 'Initialize tree traversal pointer' },
   { label: 'TreeNode* left', text: 'TreeNode* left;', kind: 'type', detail: 'Left child pointer' },
   { label: 'TreeNode* right', text: 'TreeNode* right;', kind: 'type', detail: 'Right child pointer' },
+  { label: 'struct TreeNode', text: 'struct TreeNode {\n    int val;\n    TreeNode* left;\n    TreeNode* right;\n};', kind: 'snippet', detail: 'Binary tree node definition' },
   
   { label: 'DoublyListNode', text: 'DoublyListNode* ', kind: 'type', detail: 'Doubly linked list node pointer' },
+  { label: 'struct DoublyListNode', text: 'struct DoublyListNode {\n    int val;\n    DoublyListNode* prev;\n    DoublyListNode* next;\n};', kind: 'snippet', detail: 'Doubly linked list node definition' },
 
   // Keywords & Memory
   { label: 'new ListNode', text: 'new ListNode(${1:10});', kind: 'memory', detail: 'Allocate dynamic node on heap' },
   { label: 'new TreeNode', text: 'new TreeNode(${1:10});', kind: 'memory', detail: 'Allocate dynamic tree node on heap' },
   { label: 'delete', text: 'delete ${1:ptr};', kind: 'memory', detail: 'Deallocate heap memory' },
   { label: 'nullptr', text: 'nullptr', kind: 'keyword', detail: 'C++ null pointer literal' },
+  { label: 'null', text: 'nullptr', kind: 'keyword', detail: 'C++ null pointer literal' },
 
-  // Control Flow Idioms
+  // Streams & Output
+  { label: 'cout <<', text: 'cout << ${1:expr};', kind: 'snippet', detail: 'Print to standard output' },
+  { label: 'cout << endl', text: 'cout << ${1:expr} << endl;', kind: 'snippet', detail: 'Print expression with newline' },
+  { label: 'endl', text: 'endl', kind: 'keyword', detail: 'Stream newline' },
+
+  // Control Flow Idioms & Helper Functions
+  { label: 'printNode(head)', text: 'void printNode(ListNode* head) {\n    ListNode* temp = head;\n    while (temp != nullptr) {\n        cout << temp->val;\n        temp = temp->next;\n    }\n}', kind: 'snippet', detail: 'List printer function' },
   { label: 'while (curr != nullptr)', text: 'while (curr != nullptr) {\n    curr = curr->next;\n}', kind: 'snippet', detail: 'List traversal loop' },
   { label: 'while (fast != nullptr && fast->next != nullptr)', text: 'while (fast != nullptr && fast->next != nullptr) {\n    slow = slow->next;\n    fast = fast->next->next;\n}', kind: 'snippet', detail: 'Fast/slow two pointers loop' },
   { label: 'if (head == nullptr)', text: 'if (head == nullptr) {\n    return nullptr;\n}', kind: 'snippet', detail: 'Check for empty list' },

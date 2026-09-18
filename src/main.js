@@ -140,7 +140,7 @@ class App {
       progressId: 'progress',
       stepLabelId: 'stepLabel',
       explanationBannerId: 'explanationBanner',
-      onStepChange: (step) => this.renderStep(step)
+      onStepChange: (step) => this.renderStep(step, true)
     });
 
     // 5. Example Drawer Modal
@@ -319,13 +319,13 @@ class App {
 
     // Default to the final step so user immediately sees their created structures
     this.currentStep = Math.max(0, timeline.length - 1);
-    this.renderStep(this.currentStep);
+    this.renderStep(this.currentStep, false);
 
     // Persist state to localStorage
     this.saveState();
   }
 
-  renderStep(idx) {
+  renderStep(idx, forceScroll = false) {
     if (!this.timeline || this.timeline.length === 0) return;
     const snap = this.timeline[idx];
     if (!snap) return;
@@ -334,7 +334,7 @@ class App {
 
     // Highlight editor active line
     const isErr = !!(snap.meta && snap.meta.error);
-    this.editor.setActiveLine(snap.lineIndex, isErr);
+    this.editor.setActiveLine(snap.lineIndex, isErr, forceScroll);
 
     // Update memory inspector (stack & heap)
     this.memory.update(snap.frames, snap.heap, snap.meta);

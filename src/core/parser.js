@@ -65,6 +65,15 @@ export function parseProgram(tokens) {
       continue;
     }
 
+    // Support 'using namespace ...;'
+    if (t.value === 'using') {
+      while (peek(p).type !== 'eof' && peek(p).value !== ';') {
+        next(p);
+      }
+      if (peek(p).value === ';') next(p);
+      continue;
+    }
+
     const save = p.pos;
     try {
       const fn = parseFunctionDecl(p);
@@ -72,6 +81,9 @@ export function parseProgram(tokens) {
       order.push(fn.name);
       continue;
     } catch (e) {
+      if (e._insideFunction) {
+        throw e;
+      }
       p.pos = save;
     }
 
@@ -86,7 +98,7 @@ export function parseProgram(tokens) {
   }
 
   // If top-level statements were written without a function wrapper, synthesize main()
-  if (topLevelStmts.length > 0) {
+  if (topLevelStmts.length > 0 && !functions['main']) {
     functions['main'] = {
       name: 'main',
       params: [],
@@ -136,6 +148,14 @@ function parseType(p) {
   if (t.type !== 'id') {
     throw new ParseError(`Expected type name near line ${t.line}`, t.line, t.col);
   }
+  let name = t.value;
+  while (peek(p).value === '::') {
+    next(p);
+    const sub = next(p);
+    if (sub.type === 'id') {
+      name += '::' + sub.value;
+    }
+  }
   let pointer = false;
   let reference = false;
   while (peek(p).value === '*' || peek(p).value === '&') {
@@ -143,7 +163,7 @@ function parseType(p) {
     if (op === '*') pointer = true;
     if (op === '&') reference = true;
   }
-  return { name: t.value, pointer, reference, line: t.line, col: t.col };
+  return { name, pointer, reference, line: t.line, col: t.col };
 }
 
 function parseFunctionDecl(p) {
@@ -175,7 +195,12 @@ function parseBlock(p) {
   const stmts = [];
   while (peek(p).value !== '}') {
     expectNotEOF(p);
-    stmts.push(parseStmt(p));
+    try {
+      stmts.push(parseStmt(p));
+    } catch (err) {
+      err._insideFunction = true;
+      throw err;
+    }
   }
   expect(p, '}');
   return stmts;
@@ -402,8 +427,18 @@ function parseEquality(p) {
 }
 
 function parseRelational(p) {
-  let left = parseAdditive(p);
+  let left = parseShift(p);
   while (['<', '>', '<=', '>='].includes(peek(p).value)) {
+    const op = next(p).value;
+    const right = parseShift(p);
+    left = { type: 'Binary', op, left, right, line: left.line };
+  }
+  return left;
+}
+
+function parseShift(p) {
+  let left = parseAdditive(p);
+  while (peek(p).value === '<<' || peek(p).value === '>>') {
     const op = next(p).value;
     const right = parseAdditive(p);
     left = { type: 'Binary', op, left, right, line: left.line };
@@ -498,7 +533,7 @@ function parsePrimary(p) {
     next(p);
     return { type: 'String', value: t.value, line: t.line };
   }
-  if (t.value === 'nullptr' || t.value === 'NULL') {
+  if (t.value === 'nullptr' || t.value === 'NULL' || t.value === 'null') {
     next(p);
     return { type: 'Null', line: t.line };
   }
@@ -529,7 +564,15 @@ function parsePrimary(p) {
   }
   if (t.type === 'id') {
     next(p);
-    return { type: 'Ident', name: t.value, line: t.line };
+    let name = t.value;
+    while (peek(p).value === '::') {
+      next(p);
+      const sub = next(p);
+      if (sub.type === 'id') {
+        name += '::' + sub.value;
+      }
+    }
+    return { type: 'Ident', name, line: t.line };
   }
   throw new ParseError(`Unexpected token '${t.value}'`, t.line, t.col);
 }

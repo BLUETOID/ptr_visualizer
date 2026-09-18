@@ -214,6 +214,44 @@ void main() {
   console.error('  [FAIL] Failed character literal test:', err.message);
 }
 
+// Test User Custom Snippet: null, cout <<, and multi-function support
+totalCount++;
+try {
+  const userSnippet = `
+struct ListNode {
+    int val;
+    ListNode* next;
+};
+
+void main() {
+    ListNode* head = new ListNode(0);
+    ListNode* a = new ListNode(1);
+    head->next = a;
+    printNode(head);
+}
+
+void printNode(ListNode* head){
+    ListNode* temp = head;
+    while(temp!=null){
+        cout<<temp->val;
+        temp = temp->next;
+    }
+}`;
+  const tokens = tokenize(userSnippet);
+  const ast = parseProgram(tokens);
+  resetEngineState({}, 0, 0);
+  const timeline = runProgram(ast.functions.main, [], ast.functions);
+  const coutSteps = timeline.filter(s => s.meta && s.meta.output !== undefined);
+  if (coutSteps.length !== 2) throw new Error(`Expected 2 cout steps, got ${coutSteps.length}`);
+  if (coutSteps[0].meta.output !== '0' || coutSteps[1].meta.output !== '1') {
+    throw new Error(`Unexpected cout output: ${coutSteps.map(s => s.meta.output).join(', ')}`);
+  }
+  console.log(`  [OK] User Custom Snippet Test: null, cout <<, and multi-function resolved correctly.`);
+  passedCount++;
+} catch (err) {
+  console.error('  [FAIL] Failed user custom snippet test:', err.message);
+}
+
 console.log(`\nVerification Completed: ${passedCount}/${totalCount} tests passed!`);
 if (passedCount !== totalCount) {
   process.exit(1);

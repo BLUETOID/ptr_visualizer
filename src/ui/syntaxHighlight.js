@@ -284,6 +284,9 @@ export class SyntaxHighlighter {
     this._lastValue = source;
     // Add a trailing newline so the overlay height matches the textarea
     this.overlay.innerHTML = highlightCode(source) + '\n';
+    if (this.textarea.style.width) {
+      this.overlay.style.width = this.textarea.style.width;
+    }
     if (this.textarea.style.height) {
       this.overlay.style.height = this.textarea.style.height;
     }

@@ -52,6 +52,8 @@
 .editor-flex {
   display: flex;
   min-height: 100%;
+  width: max-content;
+  min-width: 100%;
 }
 
 .line-numbers {
@@ -98,7 +100,6 @@
   position: relative;
   z-index: 1;
   display: block;
-  width: 100%;
   min-height: 100%;
   box-sizing: border-box;
   padding: 10px 14px;
@@ -111,11 +112,16 @@
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 21px;
-  letter-spacing: normal;
+  letter-spacing: 0;
   word-spacing: normal;
+  tab-size: 4;
+  -moz-tab-size: 4;
+  font-variant-ligatures: none !important;
+  font-feature-settings: "liga" 0, "calt" 0 !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   color: #e2e8f0;
   caret-color: #38bdf8;
-  tab-size: 4;
 }
 
 /* Status Pill */

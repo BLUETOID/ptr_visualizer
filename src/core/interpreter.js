@@ -216,6 +216,13 @@ function evalExpr(node) {
     case 'String': return node.value;
     case 'Ternary': return truthy(evalExpr(node.cond)) ? evalExpr(node.thenExpr) : evalExpr(node.elseExpr);
     case 'Ident': {
+      if (node.name === 'null' || node.name === 'NULL' || node.name === 'nullptr') return null;
+      if (node.name === 'cout' || node.name === 'std::cout') {
+        return { isStream: true, buffer: [] };
+      }
+      if (node.name === 'endl' || node.name === 'std::endl') {
+        return '\n';
+      }
       const v = getVar(node.name);
       if (!v) throw new InterpError(`Undefined variable '${node.name}'`, node.line);
       return v.value;
@@ -264,6 +271,23 @@ function evalExpr(node) {
     }
     case 'Binary': {
       const l = evalExpr(node.left);
+      if (node.op === '<<') {
+        if (l && l.isStream) {
+          const r = evalExpr(node.right);
+          let text = '';
+          if (r === null || r === undefined) text = 'nullptr';
+          else if (typeof r === 'object' && r.isStream) text = '';
+          else text = String(r);
+          l.buffer.push(text);
+          return l;
+        }
+        const r = evalExpr(node.right);
+        return Number(l) << Number(r);
+      }
+      if (node.op === '>>') {
+        const r = evalExpr(node.right);
+        return Number(l) >> Number(r);
+      }
       const r = evalExpr(node.right);
       switch (node.op) {
         case '==': return l === r;
@@ -383,8 +407,13 @@ function execExprStmt(stmt) {
     evalExpr(expr);
     record(stmt.line, `${exprToStr(expr)}`, {});
   } else {
-    evalExpr(expr);
-    record(stmt.line, `Executed: ${exprToStr(expr)}`, {});
+    const res = evalExpr(expr);
+    if (res && res.isStream) {
+      const out = res.buffer.join('');
+      record(stmt.line, `cout << ${out}`, { output: out });
+    } else {
+      record(stmt.line, `Executed: ${exprToStr(expr)}`, {});
+    }
   }
 }
 

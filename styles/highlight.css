@@ -4,8 +4,6 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
   pointer-events: none;
   white-space: pre;
   overflow: hidden;
@@ -16,9 +14,14 @@
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 21px;
-  letter-spacing: normal;
+  letter-spacing: 0;
   word-spacing: normal;
   tab-size: 4;
+  -moz-tab-size: 4;
+  font-variant-ligatures: none !important;
+  font-feature-settings: "liga" 0, "calt" 0 !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   color: transparent;
   z-index: 0;
 }
@@ -38,9 +41,14 @@
   font-family: var(--font-mono) !important;
   font-size: 13px !important;
   line-height: 21px !important;
-  letter-spacing: normal !important;
+  letter-spacing: 0 !important;
   word-spacing: normal !important;
   tab-size: 4 !important;
+  -moz-tab-size: 4 !important;
+  font-variant-ligatures: none !important;
+  font-feature-settings: "liga" 0, "calt" 0 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
 }
 
 /* Token color classes */

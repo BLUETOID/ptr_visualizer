@@ -57,9 +57,32 @@ export class MemoryInspector {
           const info = f.vars[name];
           const tr = document.createElement('tr');
           const dot = `<span class="var-dot" style="background:${colorForVar(name)}"></span>`;
-          const valDesc = info.kind === 'scalar'
-            ? `<span class="scalar-val">${info.value}</span>`
-            : this.describePointer(info.value, heap);
+          function formatVal(v) {
+            if (v === null || v === undefined) return 'nullptr';
+            if (typeof v === 'string' && v.length === 1) return `'${v}'`;
+            if (typeof v === 'string') return `"${v}"`;
+            return String(v);
+          }
+
+          let valDesc = '';
+          if (info.kind === 'array' || Array.isArray(info.value)) {
+            const arr = Array.isArray(info.value) ? info.value : [];
+            valDesc = `<span class="scalar-val">[${arr.slice(0, 10).map(formatVal).join(', ')}${arr.length > 10 ? '...' : ''}]</span> <span class="ptr-val">(len: ${arr.length})</span>`;
+          } else if (info.value && info.value.isStack) {
+            valDesc = `<span class="scalar-val">stack[${info.value.elements.map(formatVal).join(', ')}]</span> <span class="ptr-val">(top: ${formatVal(info.value.elements[info.value.elements.length - 1])})</span>`;
+          } else if (info.value && info.value.isQueue) {
+            valDesc = `<span class="scalar-val">queue[${info.value.elements.map(formatVal).join(', ')}]</span> <span class="ptr-val">(front: ${formatVal(info.value.elements[0])})</span>`;
+          } else if (info.value && info.value.isPair) {
+            valDesc = `<span class="scalar-val">pair(${formatVal(info.value.first)}, ${formatVal(info.value.second)})</span>`;
+          } else if (info.kind === 'char' || (typeof info.value === 'string' && info.value.length === 1)) {
+            valDesc = `<span class="scalar-val">'${info.value}'</span>`;
+          } else if (info.kind === 'string' || typeof info.value === 'string') {
+            valDesc = `<span class="scalar-val">"${info.value}"</span>`;
+          } else if (info.kind === 'scalar') {
+            valDesc = `<span class="scalar-val">${info.value}</span>`;
+          } else {
+            valDesc = this.describePointer(info.value, heap);
+          }
 
           tr.innerHTML = `
             <td class="var-name">${dot}<code>${name}</code></td>
@@ -73,6 +96,36 @@ export class MemoryInspector {
       frameDiv.appendChild(table);
       this.stackPanel.appendChild(frameDiv);
     }
+  }
+
+  update(frames, heap, meta = {}, mode = 'pointer') {
+    this.renderStack(frames, heap);
+    if (mode === 'array_stl') {
+      this.renderContainerStatus(frames, meta);
+    } else {
+      this.renderMemoryStatus(heap, meta);
+    }
+  }
+
+  renderContainerStatus(frames, meta) {
+    if (!this.memoryBadge) return;
+    let containerCount = 0;
+    let varCount = 0;
+    if (frames && frames.length > 0) {
+      const topFrame = frames[frames.length - 1];
+      Object.values(topFrame.vars).forEach(v => {
+        if (v.kind === 'array' || v.kind === 'string' || (v.value && (v.value.isStack || v.value.isQueue || v.value.isPriorityQueue || v.value.isSet || v.value.isMap || v.value.isPair || Array.isArray(v.value)))) {
+          containerCount++;
+        } else {
+          varCount++;
+        }
+      });
+    }
+
+    this.memoryBadge.innerHTML = `
+      <span class="mem-stat" title="Active STL Containers & Arrays">Containers: <b>${containerCount}</b></span>
+      <span class="mem-stat" title="Active Variables in Scope">Variables: <b>${varCount}</b></span>
+    `;
   }
 
   renderMemoryStatus(heap, meta) {

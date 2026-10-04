@@ -15,8 +15,32 @@ export class ExampleDrawer {
 
     this.activeCategory = 'All';
     this.searchQuery = '';
+    this.mode = 'pointer';
 
     this.initEvents();
+  }
+
+  setMode(mode) {
+    this.mode = mode;
+    this.activeCategory = 'All';
+    const modalTitle = document.querySelector('#exampleModal .modal-title-wrap h2');
+    if (modalTitle) {
+      modalTitle.textContent = mode === 'array_stl'
+        ? 'C++ Array & STL Examples'
+        : 'C++ Pointer & Memory Examples';
+    }
+    this.renderCategoryFilters();
+    this.renderCards();
+  }
+
+  isItemInCurrentMode(item) {
+    const isArrayStl = item.structureType === 'dsa' ||
+      item.category === 'Array Algorithms' ||
+      item.category === 'C++ STL Containers' ||
+      item.category === 'C++ STL Algorithms' ||
+      item.category === 'DSA & Arrays';
+    if (this.mode === 'array_stl') return isArrayStl;
+    return !isArrayStl;
   }
 
   initEvents() {
@@ -67,7 +91,8 @@ export class ExampleDrawer {
 
   renderCategoryFilters() {
     if (!this.filterContainer) return;
-    const distinctCategories = Array.from(new Set(Object.values(this.catalog).map(x => x.category).filter(Boolean)));
+    const modeItems = Object.values(this.catalog).filter(item => this.isItemInCurrentMode(item));
+    const distinctCategories = Array.from(new Set(modeItems.map(x => x.category).filter(Boolean)));
     const categories = ['All', ...distinctCategories];
     this.filterContainer.innerHTML = '';
 
@@ -89,6 +114,7 @@ export class ExampleDrawer {
     this.grid.innerHTML = '';
 
     const list = Object.values(this.catalog).filter(item => {
+      if (!this.isItemInCurrentMode(item)) return false;
       const matchCat = this.activeCategory === 'All' || item.category === this.activeCategory;
       const matchSearch = !this.searchQuery ||
         item.label.toLowerCase().includes(this.searchQuery) ||

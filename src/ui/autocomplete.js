@@ -44,6 +44,17 @@ export const COMPLETIONS = [
   { label: 'return', text: 'return ', kind: 'keyword', detail: 'Return statement' },
   { label: 'int', text: 'int ', kind: 'type', detail: 'Integer scalar type' },
   { label: 'bool', text: 'bool ', kind: 'type', detail: 'Boolean type' },
+  { label: 'string', text: 'string ', kind: 'type', detail: 'C++ string sequence' },
+  { label: 'vector<int>', text: 'vector<int> nums;', kind: 'snippet', detail: 'Standard dynamic array vector' },
+  { label: 'vector<vector<int>>', text: 'vector<vector<int>> adj(${1:n + 1});', kind: 'snippet', detail: '2D adjacency matrix or list' },
+  { label: 'stack<int>', text: 'stack<int> st;', kind: 'snippet', detail: 'LIFO stack container' },
+  { label: 'queue<int>', text: 'queue<int> q;', kind: 'snippet', detail: 'FIFO queue container' },
+  { label: 'priority_queue<int>', text: 'priority_queue<int> pq;', kind: 'snippet', detail: 'Max-heap priority queue' },
+  { label: 'set<int>', text: 'set<int> st;', kind: 'snippet', detail: 'Unique ordered set' },
+  { label: 'map<string, int>', text: 'map<string, int> mp;', kind: 'snippet', detail: 'Ordered key-value dictionary' },
+  { label: 'pair<int, int>', text: 'pair<int, int> p = {${1:0}, ${2:0}};', kind: 'snippet', detail: 'Couple pair value' },
+  { label: 'sort(nums.begin(), nums.end())', text: 'sort(nums.begin(), nums.end());', kind: 'snippet', detail: 'STL ascending sequence sort' },
+  { label: 'reverse(nums.begin(), nums.end())', text: 'reverse(nums.begin(), nums.end());', kind: 'snippet', detail: 'STL in-place sequence inversion' },
   { label: 'void', text: 'void ', kind: 'type', detail: 'Void return type' }
 ];
 
@@ -57,6 +68,19 @@ export const MEMBER_COMPLETIONS = {
     { label: 'left', text: 'left', kind: 'field', detail: 'TreeNode* left child pointer' },
     { label: 'right', text: 'right', kind: 'field', detail: 'TreeNode* right child pointer' },
     { label: 'val', text: 'val', kind: 'field', detail: 'int node value' }
+  ],
+  container: [
+    { label: 'push_back', text: 'push_back(${1:val})', kind: 'method', detail: 'Append element to end' },
+    { label: 'pop_back', text: 'pop_back()', kind: 'method', detail: 'Remove and return last element' },
+    { label: 'size', text: 'size()', kind: 'method', detail: 'Get count of elements' },
+    { label: 'empty', text: 'empty()', kind: 'method', detail: 'Check if container is empty' },
+    { label: 'push', text: 'push(${1:val})', kind: 'method', detail: 'Insert element into stack/queue/heap' },
+    { label: 'pop', text: 'pop()', kind: 'method', detail: 'Remove top/front element' },
+    { label: 'top', text: 'top()', kind: 'method', detail: 'Access highest priority/top element' },
+    { label: 'front', text: 'front()', kind: 'method', detail: 'Access front element of queue' },
+    { label: 'insert', text: 'insert(${1:val})', kind: 'method', detail: 'Insert element into set/map' },
+    { label: 'erase', text: 'erase(${1:val})', kind: 'method', detail: 'Remove element from container' },
+    { label: 'count', text: 'count(${1:key})', kind: 'method', detail: 'Count occurrences of key' }
   ]
 };
 

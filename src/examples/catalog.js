@@ -778,5 +778,590 @@ ListNode* partitionDemo(ListNode* head, int pivot) {
       const b = buildListHelper(arr);
       return { heap: b.heap, heapCounter: b.heapCounter, colRight: arr.length, args: [b.headId, extra.pivot !== undefined ? extra.pivot : 3] };
     }
+  },
+
+  // ==========================================
+  // ARRAY & STL CONTAINERS SUITE
+  // ==========================================
+  dsa_scratchpad: {
+    id: 'dsa_scratchpad',
+    category: 'Array Algorithms',
+    label: 'Array Scratchpad · Array Playground',
+    badge: 'Arrays',
+    info: 'Interactive array & algorithm sandbox. Create arrays, manipulate indices, and watch box animations live.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[10, 20, 30, 40, 50]',
+    extra: [],
+    code: `void main() {
+    int arr[5] = {10, 20, 30, 40, 50};
+    int left = 0;
+    int right = 4;
+
+    while (left < right) {
+        swap(arr[left], arr[right]);
+        left++;
+        right--;
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  dsa_two_sum: {
+    id: 'dsa_two_sum',
+    category: 'Array Algorithms',
+    label: 'Two Sum · Sorted Array (Two Pointers)',
+    badge: 'Two Pointers',
+    info: 'Two pointers left and right move inward on a sorted array to find elements summing to target.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[2, 7, 11, 15, 20]',
+    extra: [],
+    code: `void main() {
+    int nums[5] = {2, 7, 11, 15, 20};
+    int target = 18;
+    int left = 0;
+    int right = 4;
+    int found = 0;
+
+    while (left < right) {
+        int sum = nums[left] + nums[right];
+        if (sum == target) {
+            found = 1;
+            break;
+        } else if (sum < target) {
+            left++;
+        } else {
+            right--;
+        }
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  dsa_binary_search: {
+    id: 'dsa_binary_search',
+    category: 'Array Algorithms',
+    label: 'Binary Search · Divide & Conquer',
+    badge: 'Binary Search',
+    info: 'Efficient O(log n) search maintaining low, mid, and high pointers.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[3, 8, 14, 21, 35, 47, 59, 72]',
+    extra: [],
+    code: `void main() {
+    int arr[8] = {3, 8, 14, 21, 35, 47, 59, 72};
+    int target = 35;
+    int low = 0;
+    int high = 7;
+    int foundIdx = -1;
+
+    while (low <= high) {
+        int mid = low + (high - low) / 2;
+        if (arr[mid] == target) {
+            foundIdx = mid;
+            break;
+        } else if (arr[mid] < target) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  dsa_reverse_array: {
+    id: 'dsa_reverse_array',
+    category: 'Array Algorithms',
+    label: 'Reverse Array · In-Place Swap',
+    badge: 'In-Place Swap',
+    info: 'In-place array reversal using swap(arr[i], arr[j]) with animated swap arcs.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[1, 2, 3, 4, 5, 6]',
+    extra: [],
+    code: `void main() {
+    int arr[6] = {1, 2, 3, 4, 5, 6};
+    int i = 0;
+    int j = 5;
+
+    while (i < j) {
+        swap(arr[i], arr[j]);
+        i++;
+        j--;
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  dsa_bubble_sort: {
+    id: 'dsa_bubble_sort',
+    category: 'Array Algorithms',
+    label: 'Bubble Sort · Animated Swaps',
+    badge: 'Sorting',
+    info: 'Sorts an array by repeatedly swapping adjacent out-of-order elements.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[5, 1, 4, 2, 8]',
+    extra: [],
+    code: `void main() {
+    int arr[5] = {5, 1, 4, 2, 8};
+    int n = 5;
+
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                swap(arr[j], arr[j + 1]);
+            }
+        }
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  dsa_sliding_window: {
+    id: 'dsa_sliding_window',
+    category: 'Array Algorithms',
+    label: 'Sliding Window · Subarray Sum',
+    badge: 'Sliding Window',
+    info: 'Computes maximum sum of contiguous subarray of fixed size k=3.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[2, 1, 5, 1, 3, 2]',
+    extra: [],
+    code: `void main() {
+    int arr[6] = {2, 1, 5, 1, 3, 2};
+    int k = 3;
+    int windowSum = 0;
+    int maxSum = 0;
+
+    for (int i = 0; i < k; i++) {
+        windowSum += arr[i];
+    }
+    maxSum = windowSum;
+
+    for (int i = k; i < 6; i++) {
+        windowSum += arr[i] - arr[i - k];
+        if (windowSum > maxSum) {
+            maxSum = windowSum;
+        }
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  dsa_kadane: {
+    id: 'dsa_kadane',
+    category: 'Array Algorithms',
+    label: "Kadane's Algorithm · Max Subarray",
+    badge: 'Dynamic Prog',
+    info: 'O(n) dynamic programming algorithm to find maximum contiguous subarray sum.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[-2, 1, -3, 4, -1, 2, 1, -5, 4]',
+    extra: [],
+    code: `void main() {
+    int nums[9] = {-2, 1, -3, 4, -1, 2, 1, -5, 4};
+    int maxSoFar = nums[0];
+    int currentMax = nums[0];
+
+    for (int i = 1; i < 9; i++) {
+        int val = nums[i];
+        currentMax = (val > currentMax + val) ? val : (currentMax + val);
+        if (currentMax > maxSoFar) {
+            maxSoFar = currentMax;
+        }
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  dsa_vector: {
+    id: 'dsa_vector',
+    category: 'C++ STL Containers',
+    label: 'std::vector · push_back & size()',
+    badge: 'std::vector',
+    info: 'C++ vector initialization, dynamic push_back, and size() method calls.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[10, 20, 30]',
+    extra: [],
+    code: `void main() {
+    vector<int> v = {10, 20, 30};
+    v.push_back(40);
+    v.push_back(50);
+
+    int total = 0;
+    int sz = v.size();
+    for (int i = 0; i < sz; i++) {
+        total += v[i];
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  stl_sort: {
+    id: 'stl_sort',
+    category: 'C++ STL Algorithms',
+    label: 'std::sort · Sequence Sorting',
+    badge: 'std::sort',
+    info: 'Sorts a vector in non-decreasing order using C++ std::sort.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[38, 27, 43, 3, 9, 82, 10]',
+    extra: [],
+    code: `void main() {
+    vector<int> nums = {38, 27, 43, 3, 9, 82, 10};
+    sort(nums.begin(), nums.end());
+    int minVal = nums[0];
+    int maxVal = nums[6];
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  stl_reverse: {
+    id: 'stl_reverse',
+    category: 'C++ STL Algorithms',
+    label: 'std::reverse · Sequence Inversion',
+    badge: 'std::reverse',
+    info: 'Inverts the order of elements in a range using C++ std::reverse.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[1, 2, 3, 4, 5]',
+    extra: [],
+    code: `void main() {
+    vector<int> v = {1, 2, 3, 4, 5};
+    reverse(v.begin(), v.end());
+    int first = v[0];
+    int last = v[4];
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  stl_stack: {
+    id: 'stl_stack',
+    category: 'C++ STL Containers',
+    label: 'std::stack · LIFO Operations',
+    badge: 'std::stack',
+    info: 'Standard LIFO stack container demonstrating push, pop, and top.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `void main() {
+    stack<int> s;
+    s.push(10);
+    s.push(20);
+    s.push(30);
+
+    int topElement = s.top();
+    s.pop();
+    s.push(40);
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  lc20_valid_parentheses: {
+    id: 'lc20_valid_parentheses',
+    category: 'C++ STL Containers',
+    label: 'LC 20 · Valid Parentheses (stack<char>)',
+    badge: 'LC 20',
+    info: 'Validate matching parenthesis string using stack<char> push, pop, and top inspection.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `void main() {
+    string s = "{[()]}";
+    stack<char> st;
+
+    for (char c : s) {
+        if (c == '(' || c == '{' || c == '[') {
+            st.push(c);
+        } else {
+            if (st.empty()) break;
+            char top = st.top();
+            if ((c == ')' && top == '(') ||
+                (c == '}' && top == '{') ||
+                (c == ']' && top == '[')) {
+                st.pop();
+            } else {
+                break;
+            }
+        }
+    }
+
+    bool valid = st.empty();
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  stl_queue: {
+    id: 'stl_queue',
+    category: 'C++ STL Containers',
+    label: 'std::queue · FIFO Operations',
+    badge: 'std::queue',
+    info: 'Standard FIFO queue container demonstrating push, pop, front, and back.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `void main() {
+    queue<int> q;
+    q.push(100);
+    q.push(200);
+    q.push(300);
+
+    int frontVal = q.front();
+    q.pop();
+    q.push(400);
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  stl_pair: {
+    id: 'stl_pair',
+    category: 'C++ STL Containers',
+    label: 'std::pair · Heterogeneous Couple',
+    badge: 'std::pair',
+    info: 'std::pair and make_pair utility for binding two values together.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `void main() {
+    pair<int, int> p = {10, 20};
+    p.first = 50;
+
+    pair<int, int> q = make_pair(100, 200);
+    int sum = p.first + q.second;
+} `,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  cp_bfs: {
+    id: 'cp_bfs',
+    category: 'C++ STL Algorithms',
+    label: 'CP BFS · Shortest Path (CSES / CF)',
+    badge: 'Competitive Programming',
+    info: 'Full Competitive Programming BFS on an unweighted graph using queue, 2D vector adj, range-for, macros, and cin stream.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[5, 5, 1, 2, 2, 3, 3, 4, 4, 5, 1, 5]',
+    extra: [],
+    code: `#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+using vi = vector<int>;
+#define all(x) (x).begin(), (x).end()
+#define sz(x) ((int)(x).size())
+
+void solve() {
+    int n, m;
+    cin >> n >> m;
+
+    vector<vector<int>> adj(n + 1);
+    vector<bool> visited(n + 1, false);
+    vector<int> parent(n + 1, 0);
+    queue<int> q;
+
+    for (int i = 0; i < m; i++) {
+        int a, b;
+        cin >> a >> b;
+        adj[a].push_back(b);
+        adj[b].push_back(a);
+    }
+
+    visited[1] = true;
+    q.push(1);
+
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
+
+        if (u == n) break;
+
+        for (int x : adj[u]) {
+            if (!visited[x]) {
+                visited[x] = true;
+                parent[x] = u;
+                q.push(x);
+            }
+        }
+    }
+
+    if (!visited[n]) {
+        cout << "IMPOSSIBLE" << endl;
+        return;
+    }
+
+    vector<int> path;
+    for (int count = n; count != 0; count = parent[count]) {
+        path.push_back(count);
+    }
+
+    reverse(all(path));
+
+    cout << path.size() << "\\n";
+    for (int i = 0; i < path.size(); i++) {
+        cout << path[i] << " ";
+    }
+    cout << "\n";
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    int t = 1;
+    while (t--) {
+        solve();
+    }
+    return 0;
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  lc125: {
+    id: 'lc125',
+    category: 'Array Algorithms',
+    label: 'LC 125 · Valid Palindrome (std::string)',
+    badge: 'Two Pointers',
+    info: 'Check if a string is a palindrome using two pointers moving inwards towards each other.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `void main() {
+    string s = "racecar";
+    int left = 0;
+    int right = s.length() - 1;
+    bool isPalindrome = true;
+
+    while (left < right) {
+        if (s[left] != s[right]) {
+            isPalindrome = false;
+            break;
+        }
+        left++;
+        right--;
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  stl_pq: {
+    id: 'stl_pq',
+    category: 'C++ STL Containers',
+    label: 'std::priority_queue · Top K & Heaps',
+    badge: 'std::priority_queue',
+    info: 'Priority queue dynamically maintaining highest priority elements at the top.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `void main() {
+    priority_queue<int> maxHeap;
+    maxHeap.push(30);
+    maxHeap.push(10);
+    maxHeap.push(50);
+    maxHeap.push(20);
+
+    int maxVal = maxHeap.top();
+    maxHeap.pop();
+
+    priority_queue<int, vector<int>, greater<int>> minHeap;
+    minHeap.push(40);
+    minHeap.push(5);
+    minHeap.push(15);
+    int minVal = minHeap.top();
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  stl_set: {
+    id: 'stl_set',
+    category: 'C++ STL Containers',
+    label: 'std::set · Unique Elements & Filtering',
+    badge: 'std::set',
+    info: 'Ordered container storing unique keys with logarithmic lookup and insertion.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `void main() {
+    set<int> uniqueNums;
+    uniqueNums.insert(10);
+    uniqueNums.insert(20);
+    uniqueNums.insert(10);
+    uniqueNums.insert(30);
+
+    int has20 = uniqueNums.count(20);
+    int has99 = uniqueNums.count(99);
+    uniqueNums.erase(20);
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  stl_map: {
+    id: 'stl_map',
+    category: 'C++ STL Containers',
+    label: 'std::map · Frequency Hash Mapping',
+    badge: 'std::map',
+    info: 'Key-value dictionary mapping string keys to counts with bracket lookup.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `void main() {
+    map<string, int> freq;
+    freq["apple"] = 3;
+    freq["banana"] = 5;
+    freq["apple"] += 2;
+
+    int appleCount = freq["apple"];
+    int orangeCount = freq["orange"];
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
   }
 };

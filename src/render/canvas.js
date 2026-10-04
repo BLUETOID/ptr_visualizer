@@ -13,6 +13,7 @@ export class CanvasManager {
     this.viewStart = { x: 0, y: 0 };
 
     this.initEvents();
+    this.applyTransform();
   }
 
   applyTransform() {

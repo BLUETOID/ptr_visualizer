@@ -7,7 +7,7 @@ import { parseProgram } from '../src/core/parser.js';
 import { resetEngineState, runProgram } from '../src/core/interpreter.js';
 import { EXAMPLES_CATALOG } from '../src/examples/catalog.js';
 
-console.log('🧪 Starting C++ Visualizer Automated Verification...');
+console.log('[START] Starting C++ Visualizer Automated Verification...');
 let passedCount = 0;
 let totalCount = 0;
 
@@ -28,13 +28,14 @@ for (const [key, ex] of Object.entries(EXAMPLES_CATALOG)) {
     const initial = ex.buildInitial(inputArr, extra);
     resetEngineState(initial.heap, initial.heapCounter, initial.colRight);
 
-    const timeline = runProgram(fn, initial.args, ast.functions);
+    const cinRaw = Array.isArray(inputArr) ? inputArr.join(' ') : ex.defaultArray;
+    const timeline = runProgram(fn, initial.args, ast.functions, cinRaw);
     if (!timeline || timeline.length === 0) throw new Error('Empty timeline generated');
 
-    console.log(`  ✓ [${ex.category}] ${ex.label}: Generated ${timeline.length} execution steps.`);
+    console.log(`  [PASS] [${ex.category}] ${ex.label}: Generated ${timeline.length} execution steps.`);
     passedCount++;
   } catch (err) {
-    console.error(`  ✗ Failed on preset '${key}':`, err.message);
+    console.error(`  [FAIL] Failed on preset '${key}':`, err.message);
   }
 }
 
@@ -51,10 +52,10 @@ try {
   if (!lastStep.meta.leaks || lastStep.meta.leaks.length === 0) {
     throw new Error('Memory leak was not detected!');
   }
-  console.log(`  ✓ Memory Leak Detection Test: Successfully flagged leaked node ${lastStep.meta.leaks.join(', ')}`);
+  console.log(`  [PASS] Memory Leak Detection Test: Successfully flagged leaked node ${lastStep.meta.leaks.join(', ')}`);
   passedCount++;
 } catch (err) {
-  console.error('  ✗ Failed memory leak test:', err.message);
+  console.error('  [FAIL] Failed memory leak test:', err.message);
 }
 
 // Test delete and dynamic allocation

@@ -1,0 +1,257 @@
+/* ========================================================
+   DSA & ARRAY VISUALIZER STYLES
+   ======================================================== */
+
+/* Mode Switcher in Topbar */
+.mode-toggle-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 2px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.mode-btn:hover {
+  color: var(--text-0);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mode-btn.active {
+  color: #38bdf8;
+  background: var(--bg-3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(56, 189, 248, 0.35);
+}
+
+.mode-btn.active.dsa-active {
+  color: #34d399;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(52, 211, 153, 0.35);
+}
+
+.mode-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Mode Notification Pill */
+.mode-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ========================================================
+   SVG DSA CANVAS ELEMENTS
+   ======================================================== */
+
+/* Array Title & Metrics */
+.dsa-array-title {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  fill: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.dsa-array-size {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  fill: #64748b;
+}
+
+/* Array Cells */
+.dsa-cell {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dsa-cell-box {
+  fill: #161b26;
+  stroke: #334155;
+  stroke-width: 1.5;
+  rx: 8px;
+  ry: 8px;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dsa-cell:hover .dsa-cell-box {
+  stroke: #475569;
+  fill: #1e2536;
+}
+
+.dsa-cell-val {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  fill: #f8fafc;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+/* Index Badges */
+.dsa-cell-index-box {
+  fill: #1e2433;
+  stroke: #334155;
+  stroke-width: 1;
+  rx: 4px;
+  ry: 4px;
+}
+
+.dsa-cell-index-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  fill: #94a3b8;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+/* Access Highlights */
+.dsa-cell.dsa-access-read .dsa-cell-box {
+  fill: rgba(56, 189, 248, 0.15) !important;
+  stroke: #38bdf8 !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
+}
+
+.dsa-cell.dsa-access-write .dsa-cell-box {
+  fill: rgba(251, 191, 36, 0.18) !important;
+  stroke: #fbbf24 !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.5));
+}
+
+.dsa-cell.dsa-access-swap .dsa-cell-box {
+  fill: rgba(192, 132, 252, 0.2) !important;
+  stroke: #c084fc !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 12px rgba(192, 132, 252, 0.5));
+}
+
+/* Pointer Markers */
+.dsa-pointer-group {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dsa-pointer-badge {
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
+  rx: 6px;
+  ry: 6px;
+}
+
+.dsa-pointer-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.dsa-pointer-arrow {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Swap Arc Connector */
+.dsa-swap-arc {
+  fill: none;
+  stroke: #c084fc;
+  stroke-width: 2.5;
+  stroke-dasharray: 4, 3;
+  animation: dsaDash 1s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.6));
+}
+
+.dsa-swap-label-box {
+  fill: #221c35;
+  stroke: #c084fc;
+  stroke-width: 1.5;
+  rx: 4px;
+  ry: 4px;
+}
+
+.dsa-swap-label-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  fill: #e9d5ff;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+@keyframes dsaDash {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+
+/* Variables Watch HUD (in Canvas) */
+.dsa-hud-card {
+  fill: #121622;
+  stroke: #2c3347;
+  stroke-width: 1.5;
+  rx: 8px;
+  ry: 8px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
+}
+
+.dsa-hud-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  fill: #94a3b8;
+  dominant-baseline: central;
+}
+
+.dsa-hud-val {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 800;
+  fill: #f8fafc;
+  dominant-baseline: central;
+}
+
+/* Empty Scope Notice */
+.dsa-empty-text {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  fill: #64748b;
+  text-anchor: middle;
+}
+
+.dsa-empty-subtext {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  fill: #475569;
+  text-anchor: middle;
+}

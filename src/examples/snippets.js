@@ -2,7 +2,7 @@
  * C++ Quick Snippets Toolbar
  */
 
-export const SNIPPETS = [
+export const POINTER_SNIPPETS = [
   {
     id: 'dummy',
     label: '+ Dummy Node',
@@ -46,3 +46,70 @@ export const SNIPPETS = [
     code: `    if (root == nullptr) {\n        return nullptr;\n    }\n`
   }
 ];
+
+export const ARRAY_STL_SNIPPETS = [
+  {
+    id: 'vector_init',
+    label: '+ Vector Push',
+    description: 'std::vector declaration and push_back',
+    code: `    vector<int> nums = {1, 2, 3};\n    nums.push_back(4);\n`
+  },
+  {
+    id: 'stl_sort',
+    label: '+ std::sort',
+    description: 'Sort vector range in non-decreasing order',
+    code: `    sort(nums.begin(), nums.end());\n`
+  },
+  {
+    id: 'stl_reverse',
+    label: '+ std::reverse',
+    description: 'Reverse vector sequence in-place',
+    code: `    reverse(nums.begin(), nums.end());\n`
+  },
+  {
+    id: 'stl_stack',
+    label: '+ Stack (LIFO)',
+    description: 'std::stack push, pop, and top',
+    code: `    stack<int> s;\n    s.push(10);\n    s.push(20);\n    int topVal = s.top();\n    s.pop();\n`
+  },
+  {
+    id: 'stl_queue',
+    label: '+ Queue (FIFO)',
+    description: 'std::queue push, pop, and front',
+    code: `    queue<int> q;\n    q.push(10);\n    q.push(20);\n    int frontVal = q.front();\n    q.pop();\n`
+  },
+  {
+    id: 'stl_pair',
+    label: '+ std::pair',
+    description: 'std::pair and make_pair initialization',
+    code: `    pair<int, int> p = {10, 20};\n    p.first = 50;\n`
+  },
+  {
+    id: 'two_pointers_lr',
+    label: '+ Two Pointers (L/R)',
+    description: 'Left and Right pointers moving towards center',
+    code: `    int left = 0, right = 4;\n    while (left < right) {\n        // do work\n        left++;\n        right--;\n    }\n`
+  },
+  {
+    id: 'swap_elements',
+    label: '+ Swap arr[i], arr[j]',
+    description: 'In-place swap of two array elements',
+    code: `    swap(arr[left], arr[right]);\n`
+  },
+  {
+    id: 'binary_search_mid',
+    label: '+ Binary Search Mid',
+    description: 'Compute middle index preventing integer overflow',
+    code: `    int mid = left + (right - left) / 2;\n`
+  },
+  {
+    id: 'new_array',
+    label: '+ New Array',
+    description: 'Declare and initialize integer array',
+    code: `    int arr[] = {10, 20, 30, 40, 50};\n    int n = 5;\n`
+  }
+];
+
+// Aliases for backwards compatibility
+export const DSA_SNIPPETS = ARRAY_STL_SNIPPETS;
+export const SNIPPETS = POINTER_SNIPPETS;

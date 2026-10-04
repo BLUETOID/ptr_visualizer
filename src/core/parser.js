@@ -14,7 +14,9 @@ export class ParseError extends Error {
 const KNOWN_TYPES = new Set([
   'int', 'bool', 'void', 'long', 'double', 'float', 'short',
   'ListNode', 'TreeNode', 'DoublyListNode', 'auto', 'char', 'unsigned', 'size_t',
-  'string', 'std::string', 'vector', 'std::vector', 'queue', 'stack', 'deque', 'set', 'map', 'pair'
+  'string', 'std::string', 'vector', 'std::vector', 'queue', 'stack', 'deque',
+  'priority_queue', 'std::priority_queue', 'set', 'std::set', 'unordered_set', 'std::unordered_set',
+  'map', 'std::map', 'unordered_map', 'std::unordered_map', 'multiset', 'multimap', 'pair', 'std::pair'
 ]);
 
 function peek(p) {
@@ -27,9 +29,14 @@ function next(p) {
   return t;
 }
 
+function isPunct(t, val) {
+  return t && t.type === 'punct' && t.value === val;
+}
+
 function expect(p, value) {
   const t = peek(p);
-  if (t.value !== value) {
+  const isDelimiter = [')', '(', '}', '{', ']', '[', ';', ','].includes(value);
+  if (t.value !== value || (isDelimiter && t.type !== 'punct')) {
     throw new ParseError(
       `Expected '${value}' but found '${t.value === null ? 'EOF' : t.value}'`,
       t.line,
@@ -57,7 +64,7 @@ export function parseProgram(tokens) {
     const t = peek(p);
     if (t.value === 'struct' || t.value === 'class') {
       try {
-        const s = parseStruct(p);
+        const s = parseStruct(p, functions, order);
         structs[s.name] = s;
         KNOWN_TYPES.add(s.name);
       } catch (err) {
@@ -66,8 +73,32 @@ export function parseProgram(tokens) {
       continue;
     }
 
-    // Support 'using namespace ...;'
+    // Support 'using namespace ...;' and 'using alias = ...;'
     if (t.value === 'using') {
+      next(p);
+      if (peek(p).value !== 'namespace') {
+        const aliasTok = next(p);
+        if (aliasTok && aliasTok.type === 'id') {
+          KNOWN_TYPES.add(aliasTok.value);
+        }
+      }
+      while (peek(p).type !== 'eof' && peek(p).value !== ';') {
+        next(p);
+      }
+      if (peek(p).value === ';') next(p);
+      continue;
+    }
+
+    // Support 'typedef ... <alias>;'
+    if (t.value === 'typedef') {
+      next(p);
+      try {
+        parseType(p);
+        const aliasTok = next(p);
+        if (aliasTok && aliasTok.type === 'id') {
+          KNOWN_TYPES.add(aliasTok.value);
+        }
+      } catch (_) {}
       while (peek(p).type !== 'eof' && peek(p).value !== ';') {
         next(p);
       }
@@ -125,20 +156,32 @@ function skipToSync(p) {
   }
 }
 
-function parseStruct(p) {
+function parseStruct(p, functions = {}, order = []) {
   next(p); // 'struct' or 'class'
   const nameTok = next(p);
   if (nameTok.type !== 'id') {
     throw new ParseError('Expected struct name', nameTok.line, nameTok.col);
   }
   expect(p, '{');
-  let depth = 1;
-  while (depth > 0) {
-    expectNotEOF(p);
-    const t = next(p);
-    if (t.value === '{') depth++;
-    else if (t.value === '}') depth--;
+  while (peek(p).value !== '}' && peek(p).type !== 'eof') {
+    const cur = peek(p);
+    if (cur.value === 'public' || cur.value === 'private' || cur.value === 'protected') {
+      next(p);
+      if (peek(p).value === ':') next(p);
+      continue;
+    }
+    const save = p.pos;
+    try {
+      const fn = parseFunctionDecl(p);
+      functions[fn.name] = fn;
+      order.push(fn.name);
+      continue;
+    } catch (_) {
+      p.pos = save;
+    }
+    next(p);
   }
+  expect(p, '}');
   if (peek(p).value === ';') next(p);
   return { name: nameTok.value };
 }
@@ -175,6 +218,8 @@ function parseType(p) {
       tmpl += tok.value;
       if (tok.value === '<') depth++;
       else if (tok.value === '>') depth--;
+      else if (tok.value === '>>') depth -= 2;
+      else if (tok.value === '>>>') depth -= 3;
     }
     name += tmpl;
   }
@@ -200,7 +245,7 @@ function parseFunctionDecl(p) {
   }
   expect(p, '(');
   const params = [];
-  while (peek(p).value !== ')') {
+  while (!isPunct(peek(p), ')')) {
     expectNotEOF(p);
     const t = parseType(p);
     const n = next(p);
@@ -208,14 +253,19 @@ function parseFunctionDecl(p) {
       throw new ParseError('Expected parameter name', n.line, n.col);
     }
     let isArrayParam = false;
-    if (peek(p).value === '[') {
+    if (isPunct(peek(p), '[')) {
       next(p);
-      if (peek(p).value !== ']') parseExpr(p);
+      if (!isPunct(peek(p), ']')) parseExpr(p);
       expect(p, ']');
       isArrayParam = true;
     }
-    params.push({ type: t, name: n.value, isArray: isArrayParam, line: n.line });
-    if (peek(p).value === ',') next(p);
+    let defaultVal = null;
+    if (peek(p).value === '=') {
+      next(p);
+      defaultVal = parseExpr(p);
+    }
+    params.push({ type: t, name: n.value, isArray: isArrayParam, defaultVal, line: n.line });
+    if (isPunct(peek(p), ',')) next(p);
     else break;
   }
   expect(p, ')');
@@ -226,7 +276,7 @@ function parseFunctionDecl(p) {
 function parseBlock(p) {
   expect(p, '{');
   const stmts = [];
-  while (peek(p).value !== '}') {
+  while (!isPunct(peek(p), '}')) {
     expectNotEOF(p);
     try {
       stmts.push(parseStmt(p));
@@ -241,10 +291,10 @@ function parseBlock(p) {
 
 function parseArgList(p) {
   const args = [];
-  while (peek(p).value !== ')') {
+  while (!isPunct(peek(p), ')')) {
     expectNotEOF(p);
     args.push(parseExpr(p));
-    if (peek(p).value === ',') next(p);
+    if (isPunct(peek(p), ',')) next(p);
     else break;
   }
   return args;
@@ -256,16 +306,37 @@ function isLikelyType(p) {
   if (t.type !== 'id') return false;
   if (KNOWN_TYPES.has(t.value)) return true;
 
+  // If next is '::', scan ahead past the '::' chains
+  let scan = p.pos + 1;
+  while (p.tokens[scan] && p.tokens[scan].value === '::') {
+    scan++;
+    if (p.tokens[scan] && p.tokens[scan].type === 'id') {
+      scan++;
+    }
+  }
+  const afterChain = p.tokens[scan];
+  if (!afterChain) return false;
+  // If followed immediately by '(', it is a function call like ios_base::sync_with_stdio(...), NOT a type declaration!
+  if (afterChain.value === '(') return false;
+
   const nextTok = p.tokens[p.pos + 1];
   if (!nextTok) return false;
   if (nextTok.value === '*' || nextTok.value === '&') return true;
-  if (nextTok.value === '<' || nextTok.value === '::') return true;
+  if (nextTok.value === '<') return true;
+  if (nextTok.value === '::') {
+    if (afterChain.value === '<' || afterChain.value === '*' || afterChain.value === '&' || afterChain.type === 'id') return true;
+    return false;
+  }
   if (nextTok.type === 'id') return true;
   return false;
 }
 
 function parseStmt(p) {
   const t = peek(p);
+  if (t.value === ';') {
+    next(p);
+    return { type: 'EmptyStmt', line: t.line };
+  }
   if (t.value === '{') return { type: 'Block', body: parseBlock(p), line: t.line };
   if (t.value === 'if') return parseIf(p);
   if (t.value === 'while') return parseWhile(p);
@@ -331,6 +402,16 @@ function parseVarDeclStmt(p) {
     next(p);
     ctorArgs = parseArgList(p);
     expect(p, ')');
+  } else if (peek(p).value === '{') {
+    next(p);
+    const elems = [];
+    while (peek(p).value !== '}' && peek(p).type !== 'eof') {
+      elems.push(parseExpr(p));
+      if (peek(p).value === ',') next(p);
+      else break;
+    }
+    expect(p, '}');
+    init = { type: 'ArrayInit', elements: elems, line: nameTok.line };
   } else if (peek(p).value === '=') {
     next(p);
     if (peek(p).value === '{') {
@@ -373,6 +454,16 @@ function parseVarDeclStmt(p) {
       next(p);
       subCtor = parseArgList(p);
       expect(p, ')');
+    } else if (peek(p).value === '{') {
+      next(p);
+      const elems = [];
+      while (peek(p).value !== '}' && peek(p).type !== 'eof') {
+        elems.push(parseExpr(p));
+        if (peek(p).value === ',') next(p);
+        else break;
+      }
+      expect(p, '}');
+      subInit = { type: 'ArrayInit', elements: elems, line: subNameTok.line };
     } else if (peek(p).value === '=') {
       next(p);
       if (peek(p).value === '{') {
@@ -432,6 +523,24 @@ function parseForInit(p) {
 function parseFor(p) {
   const line = next(p).line;
   expect(p, '(');
+
+  // Range-based for check: for (type var : container)
+  const save = p.pos;
+  if (isLikelyType(p)) {
+    try {
+      const varType = parseType(p);
+      const nameTok = next(p);
+      if (nameTok && nameTok.type === 'id' && peek(p).value === ':') {
+        next(p); // consume ':'
+        const container = parseExpr(p);
+        expect(p, ')');
+        const body = parseStmt(p);
+        return { type: 'RangeFor', varType, varName: nameTok.value, container, body, line };
+      }
+    } catch (_) {}
+    p.pos = save;
+  }
+
   let init = null;
   if (peek(p).value === ';') {
     next(p);
@@ -439,10 +548,10 @@ function parseFor(p) {
     init = parseForInit(p);
   }
   let cond = null;
-  if (peek(p).value !== ';') cond = parseExpr(p);
+  if (!isPunct(peek(p), ';')) cond = parseExpr(p);
   expect(p, ';');
   let step = null;
-  if (peek(p).value !== ')') step = parseExpr(p);
+  if (!isPunct(peek(p), ')')) step = parseExpr(p);
   expect(p, ')');
   const body = parseStmt(p);
   return { type: 'For', init, cond, step, body, line };
@@ -466,7 +575,8 @@ function parseExpr(p) {
 function parseAssignment(p) {
   const left = parseTernary(p);
   const v = peek(p).value;
-  if (v === '=' || v === '+=' || v === '-=') {
+  const assignOps = ['=', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '<<=', '>>='];
+  if (assignOps.includes(v)) {
     const op = next(p).value;
     const right = parseAssignment(p);
     return { type: 'Assign', op, left, right, line: left.line };
@@ -497,11 +607,41 @@ function parseLogicalOr(p) {
 }
 
 function parseLogicalAnd(p) {
-  let left = parseEquality(p);
+  let left = parseBitwiseOr(p);
   while (peek(p).value === '&&') {
     next(p);
-    const right = parseEquality(p);
+    const right = parseBitwiseOr(p);
     left = { type: 'Logical', op: '&&', left, right, line: left.line };
+  }
+  return left;
+}
+
+function parseBitwiseOr(p) {
+  let left = parseBitwiseXor(p);
+  while (peek(p).value === '|') {
+    next(p);
+    const right = parseBitwiseXor(p);
+    left = { type: 'Binary', op: '|', left, right, line: left.line };
+  }
+  return left;
+}
+
+function parseBitwiseXor(p) {
+  let left = parseBitwiseAnd(p);
+  while (peek(p).value === '^') {
+    next(p);
+    const right = parseBitwiseAnd(p);
+    left = { type: 'Binary', op: '^', left, right, line: left.line };
+  }
+  return left;
+}
+
+function parseBitwiseAnd(p) {
+  let left = parseEquality(p);
+  while (peek(p).value === '&') {
+    next(p);
+    const right = parseEquality(p);
+    left = { type: 'Binary', op: '&', left, right, line: left.line };
   }
   return left;
 }
@@ -557,32 +697,40 @@ function parseMultiplicative(p) {
 }
 
 function parseUnary(p) {
-  const v = peek(p).value;
-  if (v === '!') {
-    const line = next(p).line;
-    const arg = parseUnary(p);
-    return { type: 'Unary', op: '!', arg, line };
-  }
-  if (v === '-') {
-    const line = next(p).line;
-    const arg = parseUnary(p);
-    return { type: 'Unary', op: '-', arg, line };
-  }
-  if (v === '&') {
-    const line = next(p).line;
-    const arg = parseUnary(p);
-    return { type: 'AddressOf', arg, line };
-  }
-  if (v === '*') {
-    const line = next(p).line;
-    const arg = parseUnary(p);
-    return { type: 'Deref', arg, line };
-  }
-  if (v === '++' || v === '--') {
-    const op = next(p).value;
-    const line = peek(p).line;
-    const arg = parseUnary(p);
-    return { type: 'PreIncDec', op, arg, line };
+  const t = peek(p);
+  if (t.type === 'punct') {
+    const v = t.value;
+    if (v === '!') {
+      const line = next(p).line;
+      const arg = parseUnary(p);
+      return { type: 'Unary', op: '!', arg, line };
+    }
+    if (v === '~') {
+      const line = next(p).line;
+      const arg = parseUnary(p);
+      return { type: 'Unary', op: '~', arg, line };
+    }
+    if (v === '-') {
+      const line = next(p).line;
+      const arg = parseUnary(p);
+      return { type: 'Unary', op: '-', arg, line };
+    }
+    if (v === '&') {
+      const line = next(p).line;
+      const arg = parseUnary(p);
+      return { type: 'AddressOf', arg, line };
+    }
+    if (v === '*') {
+      const line = next(p).line;
+      const arg = parseUnary(p);
+      return { type: 'Deref', arg, line };
+    }
+    if (v === '++' || v === '--') {
+      const op = next(p).value;
+      const line = peek(p).line;
+      const arg = parseUnary(p);
+      return { type: 'PreIncDec', op, arg, line };
+    }
   }
   return parsePostfix(p);
 }
@@ -590,7 +738,9 @@ function parseUnary(p) {
 function parsePostfix(p) {
   let expr = parsePrimary(p);
   while (true) {
-    const v = peek(p).value;
+    const t = peek(p);
+    if (t.type !== 'punct') break;
+    const v = t.value;
     if (v === '->' || v === '.') {
       next(p);
       const f = next(p);
@@ -624,6 +774,10 @@ function parsePrimary(p) {
     next(p);
     return { type: 'Num', value: t.value, line: t.line };
   }
+  if (t.type === 'char') {
+    next(p);
+    return { type: 'Char', value: t.value, numValue: t.numValue, line: t.line };
+  }
   if (t.type === 'string') {
     next(p);
     return { type: 'String', value: t.value, line: t.line };
@@ -644,20 +798,69 @@ function parsePrimary(p) {
     next(p);
     const typeTok = next(p);
     let args = [];
-    if (peek(p).value === '(') {
+    if (isPunct(peek(p), '(')) {
       next(p);
       args = parseArgList(p);
       expect(p, ')');
     }
     return { type: 'New', typeName: typeTok.value, args, line: t.line };
   }
-  if (t.value === '(') {
+  if (isPunct(t, '{')) {
     next(p);
+    const elems = [];
+    while (!isPunct(peek(p), '}') && peek(p).type !== 'eof') {
+      elems.push(parseExpr(p));
+      if (isPunct(peek(p), ',')) next(p);
+      else break;
+    }
+    expect(p, '}');
+    return { type: 'ArrayInit', elements: elems, line: t.line };
+  }
+  if (isPunct(t, '(')) {
+    const save = p.pos;
+    next(p);
+    if (isLikelyType(p)) {
+      try {
+        const castType = parseType(p);
+        if (isPunct(peek(p), ')')) {
+          next(p);
+          const expr = parseUnary(p);
+          return { type: 'Cast', targetType: castType.name, expr, line: t.line };
+        }
+      } catch (_) {}
+      p.pos = save;
+      next(p);
+    }
     const e = parseExpr(p);
     expect(p, ')');
     return e;
   }
   if (t.type === 'id') {
+    // Check if this is a temporary constructor e.g. vector<int>(2, 0) or pair<int, int>(1, 2)
+    if (isLikelyType(p)) {
+      const save = p.pos;
+      try {
+        const typeObj = parseType(p);
+        if (isPunct(peek(p), '(')) {
+          next(p);
+          const args = parseArgList(p);
+          expect(p, ')');
+          return { type: 'New', typeName: typeObj.name, args, line: t.line, isCtor: true };
+        } else if (isPunct(peek(p), '{')) {
+          next(p);
+          const elems = [];
+          while (!isPunct(peek(p), '}') && peek(p).type !== 'eof') {
+            elems.push(parseExpr(p));
+            if (isPunct(peek(p), ',')) next(p);
+            else break;
+          }
+          expect(p, '}');
+          return { type: 'ArrayInit', elements: elems, line: t.line, typeName: typeObj.name };
+        }
+      } catch (_) {}
+      p.pos = save;
+    }
+
     next(p);
     let name = t.value;
     while (peek(p).value === '::') {

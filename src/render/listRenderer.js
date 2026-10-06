@@ -7,6 +7,8 @@ const NODE_W = 96;
 const NODE_H = 56;
 const COL_GAP = 160;
 const ROW_Y = 270;
+const BASE_ROW_Y = 160;
+const ROW_GAP = 160;
 const ORIGIN_X = 260;
 
 const VAR_COLORS = {
@@ -22,7 +24,19 @@ const VAR_COLORS = {
   dummy: '#94a3b8',
   tail: '#fb923c',
   p: '#60a5fa',
-  q: '#34d399'
+  q: '#34d399',
+  l1: '#38bdf8',
+  l2: '#4ade80',
+  list1: '#38bdf8',
+  list2: '#4ade80',
+  headA: '#38bdf8',
+  headB: '#4ade80',
+  head1: '#38bdf8',
+  head2: '#4ade80',
+  head3: '#c084fc',
+  head4: '#f472b6',
+  pA: '#60a5fa',
+  pB: '#34d399'
 };
 
 const FALLBACK_PALETTE = [
@@ -46,6 +60,10 @@ function svgEl(tag, parent) {
 }
 
 function bezierPath(sx, sy, tx, ty, arcAbove, arcHeight) {
+  if (Math.abs(sy - ty) > 20) {
+    const dx = Math.max(40, Math.abs(tx - sx) / 2);
+    return `M ${sx} ${sy} C ${sx + dx} ${sy}, ${tx - dx} ${ty}, ${tx} ${ty}`;
+  }
   const midX = (sx + tx) / 2;
   let c1y, c2y;
   if (arcAbove) {
@@ -100,19 +118,26 @@ export class ListRenderer {
     const key = `node:${n.id}`;
     const isFreed = !!n.freed;
     const isLeak = leakIds && leakIds.includes(n.id);
-    const isDoubly = n.structType === 'DoublyListNode';
 
     const g = this.getOrCreateGroup(key, 'list-node', seen);
     if (!g.dataset.built) {
       g.innerHTML = `
         <rect class="val-cell"></rect>
-        <rect class="ptr-cell next-cell"></rect>
+        <rect class="ptr-cell"></rect>
         <text class="val-text"></text>
-        <circle class="ptr-dot next-dot" r="4"></circle>
+        <circle class="ptr-dot" r="4"></circle>
         <text class="label-text"></text>
         <text class="status-badge"></text>
       `;
       g.dataset.built = '1';
+
+      // Click to highlight corresponding memory cell in Inspector
+      g.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ptrviz-node-click', { detail: { id: n.id } }));
+        }
+      });
     }
 
     g.setAttribute('transform', `translate(${x}, ${y})`);
@@ -179,8 +204,18 @@ export class ListRenderer {
     };
   }
 
-  drawNullAnchor(x, y, seen) {
-    const key = 'nullptr-anchor';
+  drawNullAnchor(keyOrX, xOrY, seen, maybeKey) {
+    let key, x, y;
+    if (typeof keyOrX === 'string') {
+      key = keyOrX;
+      x = xOrY;
+      y = seen;
+      seen = maybeKey;
+    } else {
+      key = maybeKey || 'nullptr-anchor';
+      x = keyOrX;
+      y = xOrY;
+    }
     const g = this.getOrCreateGroup(key, 'null-anchor', seen);
     if (!g.dataset.built) {
       g.innerHTML = `
@@ -196,13 +231,34 @@ export class ListRenderer {
     return { x: x + NODE_W / 2, y };
   }
 
-  drawEdge(key, sx, sy, tx, ty, sourceCol, targetCol, seen, flashSet, arcAbove = true) {
+  drawRowLabel(key, label, x, y, seen) {
+    seen.add(key);
+    let g = this.elCache.get(key);
+    if (!g) {
+      g = svgEl('g', this.viewport);
+      g.setAttribute('class', 'row-label');
+      g.innerHTML = `<rect rx="10" ry="10"></rect><text></text>`;
+      this.elCache.set(key, g);
+    }
+    g.setAttribute('transform', `translate(${x}, ${y})`);
+    const t = g.querySelector('text');
+    t.textContent = label;
+    const w = Math.max(54, label.length * 8 + 16);
+    const rect = g.querySelector('rect');
+    rect.setAttribute('x', -w / 2);
+    rect.setAttribute('y', -10);
+    rect.setAttribute('width', w);
+    rect.setAttribute('height', 20);
+    t.setAttribute('x', 0);
+    t.setAttribute('y', 1);
+  }
+
+  drawEdge(key, sx, sy, tx, ty, sourceCol, targetCol, seen, flashSet, arcAbove = true, isNullTarget = false) {
     seen.add(key);
     let path = this.elCache.get(key);
     if (!path) {
       path = svgEl('path', this.viewport);
       path.setAttribute('class', 'edge-path');
-      path.setAttribute('marker-end', 'url(#arrowhead)');
       this.elCache.set(key, path);
     }
 
@@ -215,6 +271,15 @@ export class ListRenderer {
 
     const d = bezierPath(sx, sy, tx, ty, effectiveArcAbove, arcHeight);
     path.setAttribute('d', d);
+
+    // Red styling when pointing to nullptr
+    if (isNullTarget) {
+      path.classList.add('edge-null');
+      path.setAttribute('marker-end', 'url(#arrowhead-null)');
+    } else {
+      path.classList.remove('edge-null');
+      path.setAttribute('marker-end', 'url(#arrowhead)');
+    }
 
     if (flashSet && flashSet.has(key)) {
       this.flashEl(path);
@@ -272,72 +337,116 @@ export class ListRenderer {
     if (meta.changedEdge) flashSet.add(`edge:${meta.changedEdge.id}:${meta.changedEdge.field}`);
 
     const nodes = Object.values(heap).filter(n => n.structType !== 'TreeNode');
-    let maxCol = 0;
-    if (nodes.length) {
-      maxCol = Math.max(0, ...nodes.map(n => n.col || 0));
+    if (nodes.length === 0) {
+      this.drawNullAnchor(ORIGIN_X, ROW_Y, seen);
+      this.sweepUnseen(seen);
+      return;
     }
 
-    const colToX = (col) => ORIGIN_X + (col || 0) * COL_GAP;
+    // Check for multi-row layout
+    const hasMultipleRows = nodes.some(n => typeof n.row === 'number' && n.row > 0);
+    const rowNodesMap = new Map();
+    nodes.forEach(n => {
+      const r = typeof n.row === 'number' ? n.row : 0;
+      if (!rowNodesMap.has(r)) rowNodesMap.set(r, []);
+      rowNodesMap.get(r).push(n);
+    });
+
+    const rowIndices = Array.from(rowNodesMap.keys()).sort((a, b) => a - b);
+    const totalRows = hasMultipleRows ? rowIndices.length : 1;
+    const getY = (row) => (totalRows <= 1 ? ROW_Y : BASE_ROW_Y + row * ROW_GAP);
+
+    const minCol = Math.min(0, ...nodes.map(n => n.col || 0));
+    const originX = minCol < 0 ? Math.max(ORIGIN_X, 260 - minCol * COL_GAP) : ORIGIN_X;
+    const colToX = (col) => originX + (col || 0) * COL_GAP;
+
+    // Per-row null anchors
+    const nullXByRow = {};
+    if (totalRows > 1) {
+      rowIndices.forEach((r, idx) => {
+        const rNodes = rowNodesMap.get(r) || [];
+        const maxC = rNodes.length ? Math.max(0, ...rNodes.map(n => n.col || 0)) : 0;
+        const nx = colToX(maxC + 1);
+        nullXByRow[r] = nx;
+        this.drawNullAnchor(`nullptr-anchor-${r}`, nx, getY(r), seen);
+
+        // Clean row label on the left
+        const minC = rNodes.length ? Math.min(...rNodes.map(n => n.col || 0)) : 0;
+        this.drawRowLabel(`row-label-${r}`, `List ${idx + 1}`, colToX(minC) - 52, getY(r) + NODE_H / 2, seen);
+      });
+    } else {
+      const maxCol = Math.max(0, ...nodes.map(n => n.col || 0));
+      const nullX = colToX(maxCol + 1);
+      nullXByRow[0] = nullX;
+      this.drawNullAnchor(nullX, ROW_Y, seen);
+    }
 
     // Render nodes
     nodes.forEach(n => {
-      this.drawNode(n, colToX(n.col), ROW_Y, seen, activeIds, leakIds);
+      const r = typeof n.row === 'number' ? n.row : 0;
+      this.drawNode(n, colToX(n.col), getY(r), seen, activeIds, leakIds);
     });
-
-    // Render null terminator anchor
-    const nullX = colToX(maxCol + 1);
-    this.drawNullAnchor(nullX, ROW_Y, seen);
 
     // Render Next / Prev edges
     nodes.forEach(n => {
-      if (n.freed) return; // Don't draw outgoing pointers from freed memory
+      if (n.freed) return;
+
+      const srcRow = typeof n.row === 'number' ? n.row : 0;
 
       // Next pointer
       const sx = colToX(n.col) + NODE_W;
-      const sy = ROW_Y + NODE_H / 2;
-      let tx, ty, targetCol;
+      const sy = getY(srcRow) + NODE_H / 2;
+      let tx, ty, targetCol, tgtRow, isNullTarget = false;
 
       if (n.next === null || n.next === undefined) {
-        tx = nullX;
-        ty = ROW_Y + NODE_H / 2;
-        targetCol = maxCol + 1;
+        tx = nullXByRow[srcRow] || colToX(Math.max(0, ...nodes.map(m => m.col || 0)) + 1);
+        ty = getY(srcRow) + NODE_H / 2;
+        targetCol = (n.col || 0) + 1;
+        tgtRow = srcRow;
+        isNullTarget = true;
       } else {
         const t = heap[n.next];
         if (!t) {
-          tx = nullX;
-          ty = ROW_Y + NODE_H / 2;
-          targetCol = maxCol + 1;
+          tx = nullXByRow[srcRow] || colToX(Math.max(0, ...nodes.map(m => m.col || 0)) + 1);
+          ty = getY(srcRow) + NODE_H / 2;
+          targetCol = (n.col || 0) + 1;
+          tgtRow = srcRow;
+          isNullTarget = true;
         } else {
-          tx = colToX(t.col);
-          ty = ROW_Y + NODE_H / 2;
-          targetCol = t.col;
+          tgtRow = typeof t.row === 'number' ? t.row : srcRow;
+          targetCol = t.col || 0;
+          tx = colToX(targetCol);
+          ty = getY(tgtRow) + NODE_H / 2;
         }
       }
 
       this.drawEdge(
         `edge:${n.id}:next`,
         sx, sy, tx, ty,
-        n.col, targetCol,
+        n.col || 0, targetCol,
         seen, flashSet,
-        targetCol <= n.col // arc above if going backward or cycle
+        tgtRow === srcRow ? targetCol <= (n.col || 0) : undefined,
+        isNullTarget
       );
 
       // Prev pointer (if DoublyListNode)
       if (n.structType === 'DoublyListNode' && n.prev !== undefined) {
-        const psx = colToX(n.col);
-        const psy = ROW_Y + NODE_H * 0.75;
-        let ptx, pty, pTargetCol;
+        const psx = colToX(n.col || 0);
+        const psy = getY(srcRow) + NODE_H * 0.75;
+        let ptx, pty, pTargetCol, isPrevNull = false;
 
         if (n.prev === null || n.prev === undefined) {
-          ptx = ORIGIN_X - 100;
-          pty = ROW_Y + NODE_H * 0.75;
+          ptx = originX - 100;
+          pty = getY(srcRow) + NODE_H * 0.75;
           pTargetCol = -1;
+          isPrevNull = true;
         } else {
           const pt = heap[n.prev];
           if (pt) {
-            ptx = colToX(pt.col) + NODE_W;
-            pty = ROW_Y + NODE_H * 0.75;
-            pTargetCol = pt.col;
+            const pTgtRow = typeof pt.row === 'number' ? pt.row : srcRow;
+            pTargetCol = pt.col || 0;
+            ptx = colToX(pTargetCol) + NODE_W;
+            pty = getY(pTgtRow) + NODE_H * 0.75;
           }
         }
 
@@ -345,9 +454,10 @@ export class ListRenderer {
           this.drawEdge(
             `edge:${n.id}:prev`,
             psx, psy, ptx, pty,
-            n.col, pTargetCol,
+            n.col || 0, pTargetCol,
             seen, flashSet,
-            false // arc below for prev
+            false, // arc below for prev
+            isPrevNull
           );
         }
       }
@@ -356,16 +466,35 @@ export class ListRenderer {
     // Render pointer badges
     const groups = this.collectPointerGroups(frames);
     groups.forEach((vars, key) => {
-      let x, y;
       if (key === 'null') {
-        x = nullX + NODE_W / 2;
-        y = ROW_Y;
-      } else {
-        const n = heap[key];
-        if (!n) return;
-        x = colToX(n.col) + NODE_W / 2;
-        y = ROW_Y;
+        vars.forEach(v => {
+          let assignedRow = 0;
+          if (totalRows > 1) {
+            const nameLower = v.name.toLowerCase();
+            if (nameLower.includes('2') || nameLower.includes('b') || nameLower === 'q' || nameLower === 'second') {
+              assignedRow = rowIndices.length > 1 ? rowIndices[1] : 0;
+            }
+          }
+          const nx = (nullXByRow[assignedRow] !== undefined ? nullXByRow[assignedRow] : colToX(Math.max(0, ...nodes.map(n => n.col || 0)) + 1)) + NODE_W / 2;
+          const ny = getY(assignedRow);
+          this.drawBadge(
+            `badge:${v.frameIdx}:${v.name}`,
+            v.name,
+            v.frameIdx,
+            v.totalFrames,
+            nx,
+            ny - 24,
+            seen
+          );
+        });
+        return;
       }
+
+      const n = heap[key];
+      if (!n) return;
+      const r = typeof n.row === 'number' ? n.row : 0;
+      const x = colToX(n.col || 0) + NODE_W / 2;
+      const y = getY(r);
 
       vars.forEach((v, i) => {
         this.drawBadge(

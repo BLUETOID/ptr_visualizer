@@ -2,20 +2,61 @@
  * Comprehensive C++ Pointer & Data Structure Algorithm Catalog
  */
 
-function buildListHelper(arr) {
+export function buildListHelper(arr) {
+  if (Array.isArray(arr) && arr.length > 0 && Array.isArray(arr[0])) {
+    const multi = buildMultiListHelper(arr);
+    return {
+      heap: multi.heap,
+      ids: Object.keys(multi.heap),
+      headId: multi.heads[0] || null,
+      heads: multi.heads,
+      heapCounter: multi.heapCounter,
+      colRight: multi.maxCol
+    };
+  }
   const localHeap = {};
   let counter = 0;
   let prevId = null, headId = null;
   const ids = [];
   arr.forEach((v, idx) => {
     const id = 'n' + (counter++);
-    localHeap[id] = { id, structType: 'ListNode', val: v, next: null, col: idx, stackAllocated: false, freed: false };
+    localHeap[id] = { id, structType: 'ListNode', val: v, next: null, col: idx, row: 0, stackAllocated: false, freed: false };
     ids.push(id);
     if (prevId !== null) localHeap[prevId].next = id;
     else headId = id;
     prevId = id;
   });
-  return { heap: localHeap, ids, headId, heapCounter: counter };
+  return { heap: localHeap, ids, headId, heads: [headId], heapCounter: counter, colRight: arr.length };
+}
+
+export function buildMultiListHelper(arrays) {
+  const localHeap = {};
+  let counter = 0;
+  const heads = [];
+  let maxLen = 0;
+  arrays.forEach((arr, rowIdx) => {
+    if (!Array.isArray(arr)) return;
+    if (arr.length > maxLen) maxLen = arr.length;
+    let prevId = null, headId = null;
+    arr.forEach((v, colIdx) => {
+      const id = 'n' + (counter++);
+      localHeap[id] = {
+        id,
+        structType: 'ListNode',
+        val: v,
+        next: null,
+        col: colIdx,
+        row: rowIdx,
+        stackAllocated: false,
+        freed: false
+      };
+      if (prevId !== null) localHeap[prevId].next = id;
+      else headId = id;
+      prevId = id;
+    });
+    heads.push(headId);
+  });
+  return { heap: localHeap, heads, heapCounter: counter, maxCol: maxLen };
 }
 
 function buildDoublyListHelper(arr) {
@@ -107,6 +148,15 @@ void main() {
     b->next = c;
 }`,
     buildInitial(arr) {
+      if (Array.isArray(arr) && arr.length > 0) {
+        if (Array.isArray(arr[0])) {
+          const m = buildMultiListHelper(arr);
+          return { heap: m.heap, heapCounter: m.heapCounter, colRight: m.maxCol, args: m.heads };
+        } else {
+          const b = buildListHelper(arr);
+          return { heap: b.heap, heapCounter: b.heapCounter, colRight: arr.length, args: [b.headId] };
+        }
+      }
       return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
     }
   },
@@ -114,6 +164,114 @@ void main() {
   // ==========================================
   // SINGLY LINKED LISTS
   // ==========================================
+  lc21: {
+    id: 'lc21',
+    category: 'Singly Linked List',
+    label: 'LC 21 · Merge Two Sorted Lists',
+    badge: 'Multi-List',
+    info: 'Splices nodes of two sorted linked lists together into one sorted list.',
+    structureType: 'list',
+    entryFn: 'mergeTwoLists',
+    defaultArray: '[[1, 2, 4], [1, 3, 4]]',
+    extra: [],
+    code: `struct ListNode {
+    int val;
+    ListNode* next;
+};
+
+ListNode* mergeTwoLists(ListNode* list1, ListNode* list2) {
+    ListNode dummy(0);
+    ListNode* tail = &dummy;
+
+    while (list1 != nullptr && list2 != nullptr) {
+        if (list1->val <= list2->val) {
+            tail->next = list1;
+            list1 = list1->next;
+        } else {
+            tail->next = list2;
+            list2 = list2->next;
+        }
+        tail = tail->next;
+    }
+    tail->next = (list1 != nullptr) ? list1 : list2;
+    return dummy.next;
+}`,
+    buildInitial(arr) {
+      const lists = (Array.isArray(arr) && arr.length > 0 && Array.isArray(arr[0]))
+        ? arr
+        : [[1, 2, 4], [1, 3, 4]];
+      const m = buildMultiListHelper(lists);
+      return { heap: m.heap, heapCounter: m.heapCounter, colRight: m.maxCol, args: m.heads };
+    }
+  },
+
+  lc160: {
+    id: 'lc160',
+    category: 'Singly Linked List',
+    label: 'LC 160 · Intersection of Two Lists',
+    badge: 'Multi-List',
+    info: 'Two pointers traverse both lists with wrap-around to locate the intersection node.',
+    structureType: 'list',
+    entryFn: 'getIntersectionNode',
+    defaultArray: '[[4, 1, 8, 4, 5], [5, 6, 1, 8, 4, 5]]',
+    extra: [],
+    code: `struct ListNode {
+    int val;
+    ListNode* next;
+};
+
+ListNode* getIntersectionNode(ListNode* headA, ListNode* headB) {
+    ListNode* pA = headA;
+    ListNode* pB = headB;
+
+    while (pA != pB) {
+        pA = (pA == nullptr) ? headB : pA->next;
+        pB = (pB == nullptr) ? headA : pB->next;
+    }
+    return pA;
+}`,
+    buildInitial(arr) {
+      const localHeap = {};
+      let counter = 0;
+      // Common nodes: [8, 4, 5]
+      const cVals = [8, 4, 5];
+      const commonIds = [];
+      let cPrev = null;
+      cVals.forEach((v, idx) => {
+        const id = 'n' + (counter++);
+        commonIds.push(id);
+        localHeap[id] = { id, structType: 'ListNode', val: v, next: null, col: 3 + idx, row: 0, stackAllocated: false, freed: false };
+        if (cPrev) localHeap[cPrev].next = id;
+        cPrev = id;
+      });
+
+      // List A: [4, 1] -> common
+      const aVals = [4, 1];
+      let aHead = null, aPrev = null;
+      aVals.forEach((v, idx) => {
+        const id = 'n' + (counter++);
+        if (!aHead) aHead = id;
+        localHeap[id] = { id, structType: 'ListNode', val: v, next: null, col: idx, row: 0, stackAllocated: false, freed: false };
+        if (aPrev) localHeap[aPrev].next = id;
+        aPrev = id;
+      });
+      if (aPrev && commonIds.length) localHeap[aPrev].next = commonIds[0];
+
+      // List B: [5, 6, 1] -> common
+      const bVals = [5, 6, 1];
+      let bHead = null, bPrev = null;
+      bVals.forEach((v, idx) => {
+        const id = 'n' + (counter++);
+        if (!bHead) bHead = id;
+        localHeap[id] = { id, structType: 'ListNode', val: v, next: null, col: idx, row: 1, stackAllocated: false, freed: false };
+        if (bPrev) localHeap[bPrev].next = id;
+        bPrev = id;
+      });
+      if (bPrev && commonIds.length) localHeap[bPrev].next = commonIds[0];
+
+      return { heap: localHeap, heapCounter: counter, colRight: 6, args: [aHead, bHead] };
+    }
+  },
   lc206: {
     id: 'lc206',
     category: 'Singly Linked List',

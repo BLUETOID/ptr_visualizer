@@ -58,6 +58,12 @@
   border-color: rgba(56, 189, 248, 0.4);
 }
 
+.stack-table tr.inspect-highlight {
+  background: rgba(56, 189, 248, 0.25) !important;
+  outline: 1px solid var(--accent);
+  transition: background 0.3s ease;
+}
+
 .frame-header {
   background: var(--bg-2);
   padding: 6px 12px;

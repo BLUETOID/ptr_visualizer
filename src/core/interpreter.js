@@ -1564,6 +1564,17 @@ export function runProgram(fn, argVals, allFunctions = {}, cinInput = null) {
     setVar(param.name, rawVal, k);
   });
 
+  // Automatically bind pointer variables (head2, head3, etc.) for additional multi-list heads
+  if (argVals && argVals.length > fn.params.length) {
+    for (let i = fn.params.length; i < argVals.length; i++) {
+      const rawVal = argVals[i];
+      if (rawVal !== undefined && rawVal !== null) {
+        const varName = (fn.params.length === 0 && i === 0) ? 'head' : `head${i + 1}`;
+        setVar(varName, rawVal, 'pointer');
+      }
+    }
+  }
+
   try {
     record(
       fn.body.length ? fn.body[0].line : 1,

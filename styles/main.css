@@ -127,7 +127,12 @@ input:focus {
 }
 
 input[type="text"] {
-  width: 180px;
+  width: 200px;
+}
+
+#arrayInput {
+  width: 250px;
+  min-width: 210px;
 }
 
 input[type="number"] {

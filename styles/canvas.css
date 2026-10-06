@@ -54,8 +54,31 @@ svg#canvas.panning {
 .list-node,
 .tree-node,
 .badge,
-.null-anchor {
+.null-anchor,
+.row-label {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.row-label rect {
+  fill: #161a26;
+  stroke: #334155;
+  stroke-width: 1;
+}
+
+.row-label text {
+  fill: #94a3b8;
+  font: 700 11px var(--font-mono);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.list-node {
+  cursor: pointer;
+}
+
+.list-node:hover .val-cell,
+.list-node:hover .ptr-cell {
+  stroke: #38bdf8;
 }
 
 /* Singly / Doubly Linked List Nodes */
@@ -135,6 +158,10 @@ svg#canvas.panning {
   stroke: #64748b;
   stroke-width: 2;
   transition: d 0.3s ease, stroke 0.2s;
+}
+
+.edge-path.edge-null {
+  stroke: #ef4444;
 }
 
 .edge-path.flash,

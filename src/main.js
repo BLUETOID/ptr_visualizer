@@ -11,13 +11,64 @@ import { ListRenderer } from './render/listRenderer.js';
 import { TreeRenderer } from './render/treeRenderer.js';
 import { DsaRenderer } from './render/dsaRenderer.js';
 
-import { EXAMPLES_CATALOG } from './examples/catalog.js';
+import { EXAMPLES_CATALOG, buildListHelper, buildMultiListHelper } from './examples/catalog.js';
 import { SNIPPETS, POINTER_SNIPPETS, ARRAY_STL_SNIPPETS, DSA_SNIPPETS } from './examples/snippets.js';
 
 import { EditorManager } from './ui/editor.js';
 import { ControlsManager } from './ui/controls.js';
 import { MemoryInspector } from './ui/memoryInspector.js';
 import { ExampleDrawer } from './ui/exampleDrawer.js';
+
+export function parseListInputs(rawStr) {
+  if (!rawStr || !rawStr.trim()) return [];
+  const trimmed = rawStr.trim();
+
+  // 1. Direct JSON parse (handles [[1, 2], [3, 4]] or single [1, 2, 3])
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      if (parsed.length > 0 && Array.isArray(parsed[0])) {
+        return parsed;
+      }
+      return [parsed];
+    }
+  } catch (_) {}
+
+  // 2. Comma or space separated bracketed lists: "[1, 2, 4], [1, 3, 4]"
+  const bracketMatches = trimmed.match(/\[[^\]]*\]/g);
+  if (bracketMatches && bracketMatches.length > 0) {
+    const lists = [];
+    for (const match of bracketMatches) {
+      try {
+        const p = JSON.parse(match);
+        if (Array.isArray(p)) lists.push(p);
+      } catch (_) {}
+    }
+    if (lists.length > 0) return lists;
+  }
+
+  // 3. Semicolon-separated lists: "1, 2, 3; 4, 5, 6"
+  if (trimmed.includes(';')) {
+    const parts = trimmed.split(';').map(s => s.trim()).filter(Boolean);
+    const lists = parts.map(part => {
+      try {
+        const p = JSON.parse(part.startsWith('[') ? part : `[${part}]`);
+        return Array.isArray(p) ? p : [p];
+      } catch (_) {
+        return [];
+      }
+    }).filter(l => l.length > 0);
+    if (lists.length > 0) return lists;
+  }
+
+  // 4. Fallback: wrap flat numbers e.g. "1, 2, 3"
+  try {
+    const wrapped = JSON.parse(`[${trimmed}]`);
+    if (Array.isArray(wrapped)) return [wrapped];
+  } catch (_) {}
+
+  return [];
+}
 
 class App {
   constructor() {
@@ -384,20 +435,17 @@ class App {
     const ex = EXAMPLES_CATALOG[this.currentPresetId];
 
     // 1. Parse Input Array (optional in scratchpad mode)
-    let arr = [];
-    const arrStr = this.arrayInput.value.trim();
+    let parsedLists = [];
+    const arrStr = this.arrayInput ? this.arrayInput.value.trim() : '';
     if (arrStr) {
-      try {
-        arr = JSON.parse(arrStr);
-        if (!Array.isArray(arr)) arr = [];
-      } catch (e) {
-        if (this.currentPresetId !== 'scratchpad' && this.currentPresetId !== 'dsa_scratchpad' && this.visualizerMode !== 'array_stl') {
-          this.editor.setStatus('Invalid JSON Array', 'error');
-          this.controls.updateExplanation('Invalid input array format. Use JSON e.g. [1, 2, 3]', true);
-          return;
-        }
+      parsedLists = parseListInputs(arrStr);
+      if (parsedLists.length === 0 && this.currentPresetId !== 'scratchpad' && this.currentPresetId !== 'dsa_scratchpad' && this.visualizerMode !== 'array_stl') {
+        this.editor.setStatus('Invalid Input Format', 'error');
+        this.controls.updateExplanation('Invalid input array format. Use JSON e.g. [1, 2, 4], [1, 3, 4]', true);
+        return;
       }
     }
+    const arr = parsedLists.length > 1 ? parsedLists : (parsedLists.length === 1 ? parsedLists[0] : []);
 
     // 2. Tokenize & Parse C++
     let ast;
@@ -463,10 +511,38 @@ class App {
     const extra = this.readExtraParams(ex);
     let initial;
     try {
-      if (fn.params.length === 0) {
-        initial = { heap: {}, heapCounter: 0, colRight: 0, args: [] };
-      } else if (ex && ex.buildInitial) {
+      if (parsedLists.length > 1) {
+        const m = buildMultiListHelper(parsedLists);
+        const args = [...m.heads];
+        while (args.length < fn.params.length) {
+          args.push(null);
+        }
+        initial = {
+          heap: m.heap,
+          heapCounter: m.heapCounter,
+          colRight: m.maxCol,
+          args
+        };
+      } else if (ex && ex.buildInitial && this.currentPresetId !== 'scratchpad') {
         initial = ex.buildInitial(arr, extra);
+      } else if (parsedLists.length === 1 && parsedLists[0].length > 0 && fn.params.length > 0) {
+        const b = buildListHelper(parsedLists[0]);
+        initial = {
+          heap: b.heap,
+          heapCounter: b.heapCounter,
+          colRight: parsedLists[0].length,
+          args: [b.headId]
+        };
+      } else if (fn.params.length === 0) {
+        if (parsedLists.length > 1) {
+          const m = buildMultiListHelper(parsedLists);
+          initial = { heap: m.heap, heapCounter: m.heapCounter, colRight: m.maxCol, args: [] };
+        } else if (parsedLists.length === 1 && parsedLists[0].length > 0) {
+          const b = buildListHelper(parsedLists[0]);
+          initial = { heap: b.heap, heapCounter: b.heapCounter, colRight: parsedLists[0].length, args: [] };
+        } else {
+          initial = { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+        }
       } else {
         initial = { heap: {}, heapCounter: 0, colRight: 0, args: new Array(fn.params.length).fill(null) };
       }
@@ -484,7 +560,7 @@ class App {
       if (cinRaw.startsWith('[') && cinRaw.endsWith(']')) {
         try {
           const parsed = JSON.parse(cinRaw);
-          if (Array.isArray(parsed)) cinRaw = parsed.join(' ');
+          if (Array.isArray(parsed)) cinRaw = parsed.flat(Infinity).join(' ');
         } catch (_) {}
       }
       timeline = runProgram(fn, initial.args, ast.functions, cinRaw);
@@ -745,6 +821,8 @@ class App {
 }
 
 // Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-  window.app = new App();
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    window.app = new App();
+  });
+}

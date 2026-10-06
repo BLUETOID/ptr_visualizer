@@ -8,6 +8,30 @@ export class MemoryInspector {
   constructor(stackPanelId, memoryBadgeId) {
     this.stackPanel = document.getElementById(stackPanelId);
     this.memoryBadge = document.getElementById(memoryBadgeId);
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('ptrviz-node-click', (e) => {
+        if (e.detail && e.detail.id) {
+          this.highlightNode(e.detail.id);
+        }
+      });
+    }
+  }
+
+  highlightNode(nodeId) {
+    if (!this.stackPanel) return;
+    const rows = this.stackPanel.querySelectorAll('.stack-table tr');
+    let matched = false;
+    rows.forEach(tr => {
+      tr.classList.remove('inspect-highlight');
+      const text = tr.textContent || '';
+      if (text.includes(nodeId)) {
+        tr.classList.add('inspect-highlight');
+        tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        matched = true;
+        setTimeout(() => tr.classList.remove('inspect-highlight'), 1800);
+      }
+    });
   }
 
   update(frames, heap, meta = {}) {

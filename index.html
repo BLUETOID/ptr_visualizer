@@ -84,17 +84,10 @@
 
     <div class="field-group">
       <label id="inputLabel" for="arrayInput">Initial Node Values</label>
-      <input type="text" id="arrayInput" spellcheck="false" placeholder="[1, 2, 3]">
+      <input type="text" id="arrayInput" spellcheck="false" placeholder="[1, 2, 4], [1, 3, 4]" title="Initial Node Values (supports single [1, 2, 3] or multiple lists: [1, 2, 4], [1, 3, 4])">
     </div>
 
     <div id="extraFields"></div>
-
-    <div class="field-group">
-      <label>&nbsp;</label>
-      <button id="runBtn" class="btn-primary" title="Re-simulate execution manually">
-        Run / Build
-      </button>
-    </div>
 
     <div id="presetInfo"></div>
   </header>
@@ -170,6 +163,9 @@
         <defs>
           <marker id="arrowhead" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
             <path d="M0,0 L7,3.5 L0,7 Z" fill="#64748b"></path>
+          </marker>
+          <marker id="arrowhead-null" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 Z" fill="#ef4444"></path>
           </marker>
         </defs>
         <g id="viewport"></g>

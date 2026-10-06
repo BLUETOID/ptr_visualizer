@@ -7,7 +7,7 @@
     "dev": "vite --port 3000 --host",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/test_all_presets.js && node tests/test_dsa_mode.js && node tests/test_cp_bfs.js && node tests/test_live_typing.js && node tests/test_autocomplete.js && node tests/test_stl_extended.js && node tests/test_leetcode_features.js && node tests/test_svg_and_share.js && node tests/test_dsa_render_all.js"
+    "test": "node tests/test_all_presets.js && node tests/test_dsa_mode.js && node tests/test_cp_bfs.js && node tests/test_live_typing.js && node tests/test_autocomplete.js && node tests/test_stl_extended.js && node tests/test_leetcode_features.js && node tests/test_svg_and_share.js && node tests/test_dsa_render_all.js && node tests/test_multi_list_pointer.js"
   },
   "devDependencies": {
     "vite": "^6.0.0"

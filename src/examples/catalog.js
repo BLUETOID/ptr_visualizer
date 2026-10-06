@@ -29,7 +29,7 @@ export function buildListHelper(arr) {
   return { heap: localHeap, ids, headId, heads: [headId], heapCounter: counter, colRight: arr.length };
 }
 
-export function buildMultiListHelper(arrays) {
+export function buildMultiListHelper(arrays, isDLL = false) {
   const localHeap = {};
   let counter = 0;
   const heads = [];
@@ -42,7 +42,7 @@ export function buildMultiListHelper(arrays) {
       const id = 'n' + (counter++);
       localHeap[id] = {
         id,
-        structType: 'ListNode',
+        structType: isDLL ? 'DoublyListNode' : 'ListNode',
         val: v,
         next: null,
         col: colIdx,
@@ -50,6 +50,9 @@ export function buildMultiListHelper(arrays) {
         stackAllocated: false,
         freed: false
       };
+      if (isDLL) {
+        localHeap[id].prev = prevId;
+      }
       if (prevId !== null) localHeap[prevId].next = id;
       else headId = id;
       prevId = id;
@@ -59,7 +62,7 @@ export function buildMultiListHelper(arrays) {
   return { heap: localHeap, heads, heapCounter: counter, maxCol: maxLen };
 }
 
-function buildDoublyListHelper(arr) {
+export function buildDoublyListHelper(arr) {
   const localHeap = {};
   let counter = 0;
   let prevId = null, headId = null;
@@ -456,6 +459,40 @@ ListNode* removeNthFromEnd(ListNode* head, int n) {
   // ==========================================
   // DOUBLY LINKED LISTS
   // ==========================================
+  dll_prepend: {
+    id: 'dll_prepend',
+    category: 'Doubly Linked List',
+    label: 'DLL · Insert at Head (Prepend)',
+    badge: 'Bidirectional',
+    info: 'Allocates a new node and inserts it at the head of a doubly linked list, connecting prev to nullptr and head to the new node.',
+    structureType: 'list',
+    entryFn: 'prepend',
+    defaultArray: '[10, 20, 30]',
+    extra: [{ id: 'newVal', label: 'New Value', type: 'number', value: 5 }],
+    code: `struct DoublyListNode {
+    int val;
+    DoublyListNode* prev;
+    DoublyListNode* next;
+};
+
+DoublyListNode* prepend(DoublyListNode* head, int newVal) {
+    DoublyListNode* newNode = new DoublyListNode(newVal);
+    newNode->next = head;
+    newNode->prev = nullptr;
+
+    if (head != nullptr) {
+        head->prev = newNode;
+    }
+    head = newNode;
+
+    return head;
+}`,
+    buildInitial(arr, extra) {
+      const b = buildDoublyListHelper(arr);
+      return { heap: b.heap, heapCounter: b.heapCounter, colRight: arr.length, args: [b.headId, extra.newVal !== undefined ? extra.newVal : 5] };
+    }
+  },
+
   dll_insert: {
     id: 'dll_insert',
     category: 'Doubly Linked List',
@@ -494,6 +531,176 @@ DoublyListNode* insertAfter(DoublyListNode* head, int newVal) {
     buildInitial(arr, extra) {
       const b = buildDoublyListHelper(arr);
       return { heap: b.heap, heapCounter: b.heapCounter, colRight: arr.length, args: [b.headId, extra.newVal || 25] };
+    }
+  },
+
+  dll_delete: {
+    id: 'dll_delete',
+    category: 'Doubly Linked List',
+    label: 'DLL · Delete Node & Free Memory',
+    badge: 'Memory Management',
+    info: 'Locates a target node in a doubly linked list, bypasses its pointers from both directions, and safely deletes the node.',
+    structureType: 'list',
+    entryFn: 'deleteNode',
+    defaultArray: '[10, 20, 30, 40]',
+    extra: [{ id: 'targetVal', label: 'Target Value', type: 'number', value: 20 }],
+    code: `struct DoublyListNode {
+    int val;
+    DoublyListNode* prev;
+    DoublyListNode* next;
+};
+
+DoublyListNode* deleteNode(DoublyListNode* head, int targetVal) {
+    DoublyListNode* curr = head;
+
+    while (curr != nullptr && curr->val != targetVal) {
+        curr = curr->next;
+    }
+
+    if (curr == nullptr) {
+        return head;
+    }
+
+    // Unlink from previous node
+    if (curr->prev != nullptr) {
+        curr->prev->next = curr->next;
+    } else {
+        head = curr->next;
+    }
+
+    // Unlink from next node
+    if (curr->next != nullptr) {
+        curr->next->prev = curr->prev;
+    }
+
+    delete curr;
+    return head;
+}`,
+    buildInitial(arr, extra) {
+      const b = buildDoublyListHelper(arr);
+      return { heap: b.heap, heapCounter: b.heapCounter, colRight: arr.length, args: [b.headId, extra.targetVal !== undefined ? extra.targetVal : 20] };
+    }
+  },
+
+  dll_reverse: {
+    id: 'dll_reverse',
+    category: 'Doubly Linked List',
+    label: 'DLL · Reverse Doubly Linked List',
+    badge: 'Pointer Swap',
+    info: 'Reverses a doubly linked list in-place by swapping next and prev pointers for every node.',
+    structureType: 'list',
+    entryFn: 'reverseDLL',
+    defaultArray: '[10, 20, 30, 40]',
+    extra: [],
+    code: `struct DoublyListNode {
+    int val;
+    DoublyListNode* prev;
+    DoublyListNode* next;
+};
+
+DoublyListNode* reverseDLL(DoublyListNode* head) {
+    DoublyListNode* curr = head;
+    DoublyListNode* temp = nullptr;
+
+    while (curr != nullptr) {
+        temp = curr->prev;
+        curr->prev = curr->next;
+        curr->next = temp;
+        curr = curr->prev;
+    }
+
+    if (temp != nullptr) {
+        head = temp->prev;
+    }
+
+    return head;
+}`,
+    buildInitial(arr) {
+      const b = buildDoublyListHelper(arr);
+      return { heap: b.heap, heapCounter: b.heapCounter, colRight: arr.length, args: [b.headId] };
+    }
+  },
+
+  dll_palindrome: {
+    id: 'dll_palindrome',
+    category: 'Doubly Linked List',
+    label: 'DLL · Palindrome Check (Two Pointers)',
+    badge: 'Two Pointers',
+    info: 'Checks if a doubly linked list is a palindrome in O(1) extra space using inward-moving left and right pointers.',
+    structureType: 'list',
+    entryFn: 'isPalindrome',
+    defaultArray: '[1, 2, 2, 1]',
+    extra: [],
+    code: `struct DoublyListNode {
+    int val;
+    DoublyListNode* prev;
+    DoublyListNode* next;
+};
+
+bool isPalindrome(DoublyListNode* head) {
+    if (head == nullptr || head->next == nullptr) {
+        return true;
+    }
+
+    DoublyListNode* left = head;
+    DoublyListNode* right = head;
+
+    // Move right pointer to tail
+    while (right->next != nullptr) {
+        right = right->next;
+    }
+
+    // Traverse inward from both ends
+    while (left != right && left->prev != right) {
+        if (left->val != right->val) {
+            return false;
+        }
+        left = left->next;
+        right = right->prev;
+    }
+
+    return true;
+}`,
+    buildInitial(arr) {
+      const b = buildDoublyListHelper(arr);
+      return { heap: b.heap, heapCounter: b.heapCounter, colRight: arr.length, args: [b.headId] };
+    }
+  },
+
+  dll_scratchpad: {
+    id: 'dll_scratchpad',
+    category: 'Doubly Linked List',
+    label: 'DLL · Playground Scratchpad',
+    badge: 'Interactive',
+    info: 'Interactive Doubly Linked List template with nullptr anchors on both sides. Experiment with any custom DLL algorithm!',
+    structureType: 'list',
+    entryFn: 'run',
+    defaultArray: '[10, 20, 30, 40]',
+    extra: [],
+    code: `struct DoublyListNode {
+    int val;
+    DoublyListNode* prev;
+    DoublyListNode* next;
+};
+
+DoublyListNode* run(DoublyListNode* head) {
+    DoublyListNode* curr = head;
+
+    // Traverse forward to end
+    while (curr != nullptr && curr->next != nullptr) {
+        curr = curr->next;
+    }
+
+    // Traverse backward using prev
+    while (curr != nullptr) {
+        curr = curr->prev;
+    }
+
+    return head;
+}`,
+    buildInitial(arr) {
+      const b = buildDoublyListHelper(arr);
+      return { heap: b.heap, heapCounter: b.heapCounter, colRight: arr.length, args: [b.headId] };
     }
   },
 

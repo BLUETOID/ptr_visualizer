@@ -40,6 +40,24 @@ export const POINTER_SNIPPETS = [
     code: `    ListNode* newNode = new ListNode(100);\n    newNode->next = head;\n    head = newNode;\n`
   },
   {
+    id: 'dll_prepend',
+    label: '+ Prepend DLL',
+    description: 'Insert new node at DLL head and update prev/next',
+    code: `    DoublyListNode* newHead = new DoublyListNode(10);\n    newHead->next = head;\n    if (head != nullptr) head->prev = newHead;\n    head = newHead;\n`
+  },
+  {
+    id: 'dll_delete',
+    label: '+ Delete DLL Node',
+    description: 'Bypass node links in both directions and delete',
+    code: `    if (curr->prev != nullptr) curr->prev->next = curr->next;\n    if (curr->next != nullptr) curr->next->prev = curr->prev;\n    delete curr;\n`
+  },
+  {
+    id: 'dll_reverse_step',
+    label: '+ Reverse DLL Step',
+    description: 'Swap prev and next pointers of a doubly linked node',
+    code: `    DoublyListNode* temp = curr->prev;\n    curr->prev = curr->next;\n    curr->next = temp;\n    curr = curr->prev;\n`
+  },
+  {
     id: 'tree_base',
     label: '+ Tree Base Case',
     description: 'Null check base case for recursive tree functions',

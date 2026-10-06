@@ -28,6 +28,7 @@ partialCodes.forEach((code, idx) => {
 // 2. Test all snippets inside a function body
 SNIPPETS.forEach(snip => {
   const code = `struct ListNode { int val; ListNode* next; ListNode(int x) : val(x), next(nullptr) {} };
+struct DoublyListNode { int val; DoublyListNode* prev; DoublyListNode* next; };
 struct TreeNode { int val; TreeNode* left; TreeNode* right; };
 void test(ListNode* head, TreeNode* root) {
     ListNode* curr = head;

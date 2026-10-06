@@ -11,7 +11,7 @@ import { ListRenderer } from './render/listRenderer.js';
 import { TreeRenderer } from './render/treeRenderer.js';
 import { DsaRenderer } from './render/dsaRenderer.js';
 
-import { EXAMPLES_CATALOG, buildListHelper, buildMultiListHelper } from './examples/catalog.js';
+import { EXAMPLES_CATALOG, buildListHelper, buildMultiListHelper, buildDoublyListHelper } from './examples/catalog.js';
 import { SNIPPETS, POINTER_SNIPPETS, ARRAY_STL_SNIPPETS, DSA_SNIPPETS } from './examples/snippets.js';
 
 import { EditorManager } from './ui/editor.js';
@@ -498,7 +498,7 @@ class App {
     }
 
     // Auto-detect studio mode when in scratchpad
-    const hasPointerStructures = code.includes('ListNode') || code.includes('TreeNode') || code.includes('->next') || code.includes('->left') || code.includes('->right');
+    const hasPointerStructures = code.includes('ListNode') || code.includes('TreeNode') || code.includes('DoublyListNode') || code.includes('->next') || code.includes('->prev') || code.includes('->left') || code.includes('->right');
     const hasContainerStructures = code.includes('vector') || code.includes('stack') || code.includes('queue') || code.includes('priority_queue') || code.includes('set<') || code.includes('map<') || (code.includes('string ') || code.includes('string>')) || /\[\s*\d*\s*\]/.test(code);
 
     if (hasContainerStructures && !hasPointerStructures && this.visualizerMode === 'pointer' && this.currentPresetId && this.currentPresetId.includes('scratchpad')) {
@@ -509,10 +509,11 @@ class App {
 
     // 4. Build Initial Structure Heap
     const extra = this.readExtraParams(ex);
+    const isDLL = code.includes('DoublyListNode') || (ex && ex.category === 'Doubly Linked List');
     let initial;
     try {
       if (parsedLists.length > 1) {
-        const m = buildMultiListHelper(parsedLists);
+        const m = buildMultiListHelper(parsedLists, isDLL);
         const args = [...m.heads];
         while (args.length < fn.params.length) {
           args.push(null);
@@ -526,7 +527,7 @@ class App {
       } else if (ex && ex.buildInitial && this.currentPresetId !== 'scratchpad') {
         initial = ex.buildInitial(arr, extra);
       } else if (parsedLists.length === 1 && parsedLists[0].length > 0 && fn.params.length > 0) {
-        const b = buildListHelper(parsedLists[0]);
+        const b = isDLL ? buildDoublyListHelper(parsedLists[0]) : buildListHelper(parsedLists[0]);
         initial = {
           heap: b.heap,
           heapCounter: b.heapCounter,
@@ -535,10 +536,10 @@ class App {
         };
       } else if (fn.params.length === 0) {
         if (parsedLists.length > 1) {
-          const m = buildMultiListHelper(parsedLists);
+          const m = buildMultiListHelper(parsedLists, isDLL);
           initial = { heap: m.heap, heapCounter: m.heapCounter, colRight: m.maxCol, args: [] };
         } else if (parsedLists.length === 1 && parsedLists[0].length > 0) {
-          const b = buildListHelper(parsedLists[0]);
+          const b = isDLL ? buildDoublyListHelper(parsedLists[0]) : buildListHelper(parsedLists[0]);
           initial = { heap: b.heap, heapCounter: b.heapCounter, colRight: parsedLists[0].length, args: [] };
         } else {
           initial = { heap: {}, heapCounter: 0, colRight: 0, args: [] };

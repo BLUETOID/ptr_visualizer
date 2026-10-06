@@ -36,7 +36,12 @@ const VAR_COLORS = {
   head3: '#c084fc',
   head4: '#f472b6',
   pA: '#60a5fa',
-  pB: '#34d399'
+  pB: '#34d399',
+  left: '#38bdf8',
+  right: '#f472b6',
+  newNode: '#34d399',
+  newHead: '#a78bfa',
+  toDelete: '#ef4444'
 };
 
 const FALLBACK_PALETTE = [
@@ -356,30 +361,42 @@ export class ListRenderer {
     const totalRows = hasMultipleRows ? rowIndices.length : 1;
     const getY = (row) => (totalRows <= 1 ? ROW_Y : BASE_ROW_Y + row * ROW_GAP);
 
+    const hasDLL = nodes.some(n => n.structType === 'DoublyListNode' || n.prev !== undefined);
     const minCol = Math.min(0, ...nodes.map(n => n.col || 0));
-    const originX = minCol < 0 ? Math.max(ORIGIN_X, 260 - minCol * COL_GAP) : ORIGIN_X;
+    const baseOrigin = hasDLL ? (hasMultipleRows ? 320 : 260) : ORIGIN_X;
+    const originX = minCol < 0 ? Math.max(baseOrigin, baseOrigin - minCol * COL_GAP) : baseOrigin;
     const colToX = (col) => originX + (col || 0) * COL_GAP;
 
-    // Per-row null anchors
+    // Per-row null anchors (both left and right for DLL)
     const nullXByRow = {};
-    if (totalRows > 1) {
-      rowIndices.forEach((r, idx) => {
-        const rNodes = rowNodesMap.get(r) || [];
-        const maxC = rNodes.length ? Math.max(0, ...rNodes.map(n => n.col || 0)) : 0;
-        const nx = colToX(maxC + 1);
-        nullXByRow[r] = nx;
-        this.drawNullAnchor(`nullptr-anchor-${r}`, nx, getY(r), seen);
+    const prevNullXByRow = {};
 
-        // Clean row label on the left
-        const minC = rNodes.length ? Math.min(...rNodes.map(n => n.col || 0)) : 0;
-        this.drawRowLabel(`row-label-${r}`, `List ${idx + 1}`, colToX(minC) - 52, getY(r) + NODE_H / 2, seen);
-      });
-    } else {
-      const maxCol = Math.max(0, ...nodes.map(n => n.col || 0));
-      const nullX = colToX(maxCol + 1);
-      nullXByRow[0] = nullX;
-      this.drawNullAnchor(nullX, ROW_Y, seen);
-    }
+    rowIndices.forEach((r, idx) => {
+      const rNodes = rowNodesMap.get(r) || [];
+      const hasDLLOnRow = rNodes.some(n => n.structType === 'DoublyListNode' || n.prev !== undefined);
+
+      // Right nullptr anchor (for Next pointers)
+      const maxC = rNodes.length ? Math.max(0, ...rNodes.map(n => n.col || 0)) : 0;
+      const nx = colToX(maxC + 1);
+      nullXByRow[r] = nx;
+      const rightKey = totalRows > 1 ? `nullptr-anchor-${r}` : 'nullptr-anchor';
+      this.drawNullAnchor(rightKey, nx, getY(r), seen);
+
+      // Left nullptr anchor (for Doubly Linked List Prev pointers)
+      const minC = rNodes.length ? Math.min(0, ...rNodes.map(n => n.col || 0)) : 0;
+      if (hasDLLOnRow) {
+        const prevNx = colToX(minC - 1);
+        prevNullXByRow[r] = prevNx;
+        const leftKey = totalRows > 1 ? `nullptr-anchor-prev-${r}` : 'nullptr-anchor-prev';
+        this.drawNullAnchor(leftKey, prevNx, getY(r), seen);
+      }
+
+      // Row label on the left for multi-row setups
+      if (totalRows > 1) {
+        const labelX = hasDLLOnRow ? (prevNullXByRow[r] - 52) : (colToX(minC) - 52);
+        this.drawRowLabel(`row-label-${r}`, `List ${idx + 1}`, labelX, getY(r) + NODE_H / 2, seen);
+      }
+    });
 
     // Render nodes
     nodes.forEach(n => {
@@ -435,19 +452,20 @@ export class ListRenderer {
         const psy = getY(srcRow) + NODE_H * 0.75;
         let ptx, pty, pTargetCol, isPrevNull = false;
 
-        if (n.prev === null || n.prev === undefined) {
-          ptx = originX - 100;
+        if (n.prev === null || n.prev === undefined || !heap[n.prev]) {
+          const leftNullX = prevNullXByRow[srcRow] !== undefined
+            ? prevNullXByRow[srcRow]
+            : colToX((n.col || 0) - 1);
+          ptx = leftNullX + NODE_W;
           pty = getY(srcRow) + NODE_H * 0.75;
-          pTargetCol = -1;
+          pTargetCol = (n.col || 0) - 1;
           isPrevNull = true;
         } else {
           const pt = heap[n.prev];
-          if (pt) {
-            const pTgtRow = typeof pt.row === 'number' ? pt.row : srcRow;
-            pTargetCol = pt.col || 0;
-            ptx = colToX(pTargetCol) + NODE_W;
-            pty = getY(pTgtRow) + NODE_H * 0.75;
-          }
+          const pTgtRow = typeof pt.row === 'number' ? pt.row : srcRow;
+          pTargetCol = pt.col || 0;
+          ptx = colToX(pTargetCol) + NODE_W;
+          pty = getY(pTgtRow) + NODE_H * 0.75;
         }
 
         if (ptx !== undefined) {
@@ -465,6 +483,8 @@ export class ListRenderer {
 
     // Render pointer badges
     const groups = this.collectPointerGroups(frames);
+    const nullBadgeStacks = new Map();
+
     groups.forEach((vars, key) => {
       if (key === 'null') {
         vars.forEach(v => {
@@ -475,7 +495,20 @@ export class ListRenderer {
               assignedRow = rowIndices.length > 1 ? rowIndices[1] : 0;
             }
           }
-          const nx = (nullXByRow[assignedRow] !== undefined ? nullXByRow[assignedRow] : colToX(Math.max(0, ...nodes.map(n => n.col || 0)) + 1)) + NODE_W / 2;
+          const hasPrevAnchor = prevNullXByRow[assignedRow] !== undefined;
+          const isPrevVar = v.name.toLowerCase().startsWith('prev');
+          let nx;
+          let stackKey;
+          if (isPrevVar && hasPrevAnchor) {
+            nx = prevNullXByRow[assignedRow] + NODE_W / 2;
+            stackKey = `prev-${assignedRow}`;
+          } else {
+            nx = (nullXByRow[assignedRow] !== undefined ? nullXByRow[assignedRow] : colToX(Math.max(0, ...nodes.map(n => n.col || 0)) + 1)) + NODE_W / 2;
+            stackKey = `next-${assignedRow}`;
+          }
+          const stackIdx = nullBadgeStacks.get(stackKey) || 0;
+          nullBadgeStacks.set(stackKey, stackIdx + 1);
+
           const ny = getY(assignedRow);
           this.drawBadge(
             `badge:${v.frameIdx}:${v.name}`,
@@ -483,7 +516,7 @@ export class ListRenderer {
             v.frameIdx,
             v.totalFrames,
             nx,
-            ny - 24,
+            ny - 24 - stackIdx * 30,
             seen
           );
         });

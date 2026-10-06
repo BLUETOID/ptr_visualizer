@@ -163,7 +163,7 @@ for (let i = 0; i < lc21Timeline.length; i++) {
 console.log(`  [PASS] Successfully rendered all ${renderedSteps} steps of LC 21 with inter-row transitions.`);
 
 // 7. Doubly Linked List Rendering & Pointer Alignment
-console.log('[START] Verifying Doubly Linked List Rendering...');
+console.log('[START] Verifying Doubly Linked List Rendering & Dual Nullptr Anchors...');
 const dllPreset = EXAMPLES_CATALOG['dll_insert'];
 console.assert(!!dllPreset, 'DLL preset must exist in catalog');
 const dllTokens = tokenize(dllPreset.code);
@@ -175,18 +175,45 @@ const dllTimeline = runProgram(dllAst.functions[dllPreset.entryFn], dllInitial.a
 const dllRenderer = new ListRenderer(mockEl('g', 'dll-viewport'));
 // Render step 0
 dllRenderer.render(dllTimeline[0].heap, dllTimeline[0].frames, dllTimeline[0].meta || {});
-console.assert(dllRenderer.elCache.has('nullptr-anchor'), 'DLL single-row must have nullptr-anchor');
 
-// DLL head->prev points to null, so it should be red
+// Both right and left nullptr anchors must exist
+console.assert(dllRenderer.elCache.has('nullptr-anchor'), 'DLL must have right nullptr-anchor');
+console.assert(dllRenderer.elCache.has('nullptr-anchor-prev'), 'DLL must have left nullptr-anchor-prev');
+console.log('  [PASS] Doubly Linked List renders distinct nullptr anchors on both left and right sides.');
+
+// DLL head->prev points to left null, so it should be red
 const dllPrevNull = dllRenderer.elCache.get('edge:n0:prev');
 console.assert(dllPrevNull && dllPrevNull.classList.contains('edge-null'), 'DLL head->prev null edge must be red');
 console.assert(dllPrevNull.getAttribute('marker-end') === 'url(#arrowhead-null)', 'DLL head->prev must use red arrowhead-null');
-console.log('  [PASS] DLL head->prev null pointer renders with red edge-null and arrowhead-null.');
+console.log('  [PASS] DLL head->prev null pointer renders with red edge-null and arrowhead-null to left nullptr.');
+
+// DLL tail->next points to right null, so it should be red
+const dllNextNull = dllRenderer.elCache.get('edge:n2:next');
+console.assert(dllNextNull && dllNextNull.classList.contains('edge-null'), 'DLL tail->next null edge must be red');
+console.assert(dllNextNull.getAttribute('marker-end') === 'url(#arrowhead-null)', 'DLL tail->next must use red arrowhead-null');
+console.log('  [PASS] DLL tail->next null pointer renders with red edge-null and arrowhead-null to right nullptr.');
 
 // Verify adjacent next edge uses classic curved arc
 const nextEdge = dllRenderer.elCache.get('edge:n0:next');
 console.assert(nextEdge && nextEdge.getAttribute('d').includes('C'), 'Next edge must be classic curved arc');
 console.log('  [PASS] Doubly Linked List edges use classic curved arcs flowing from node to node.');
+
+// Verify all new DLL presets execute
+const dllPresetKeys = ['dll_prepend', 'dll_insert', 'dll_delete', 'dll_reverse', 'dll_palindrome', 'dll_scratchpad'];
+dllPresetKeys.forEach(key => {
+  const p = EXAMPLES_CATALOG[key];
+  console.assert(!!p, `Preset ${key} must exist in catalog`);
+  const t = tokenize(p.code);
+  const a = parseProgram(t);
+  const ini = p.buildInitial(JSON.parse(p.defaultArray), { targetVal: 20, newVal: 5 });
+  resetEngineState(ini.heap, ini.heapCounter, ini.colRight);
+  const time = runProgram(a.functions[p.entryFn], ini.args, a.functions);
+  console.assert(time && time.length > 0, `Preset ${key} must generate timeline steps`);
+  dllRenderer.render(time[0].heap, time[0].frames, time[0].meta || {});
+  console.assert(dllRenderer.elCache.has('nullptr-anchor'), `${key} must have right nullptr`);
+  console.assert(dllRenderer.elCache.has('nullptr-anchor-prev'), `${key} must have left nullptr`);
+});
+console.log('  [PASS] All Doubly Linked List presets (prepend, insert, delete, reverse, palindrome, scratchpad) executed and verified with dual nullptr.');
 
 // 8. Verify runBtn removal & marker definitions in index.html
 console.log('[START] Verifying runBtn removal & markers in index.html...');

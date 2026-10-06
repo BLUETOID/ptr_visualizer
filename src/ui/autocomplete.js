@@ -21,10 +21,12 @@ export const COMPLETIONS = [
   { label: 'struct TreeNode', text: 'struct TreeNode {\n    int val;\n    TreeNode* left;\n    TreeNode* right;\n};', kind: 'snippet', detail: 'Binary tree node definition' },
   
   { label: 'DoublyListNode', text: 'DoublyListNode* ', kind: 'type', detail: 'Doubly linked list node pointer' },
+  { label: 'DoublyListNode* curr = head;', text: 'DoublyListNode* curr = head;', kind: 'snippet', detail: 'Initialize doubly linked list traversal pointer' },
   { label: 'struct DoublyListNode', text: 'struct DoublyListNode {\n    int val;\n    DoublyListNode* prev;\n    DoublyListNode* next;\n};', kind: 'snippet', detail: 'Doubly linked list node definition' },
 
   // Keywords & Memory
   { label: 'new ListNode', text: 'new ListNode(${1:10});', kind: 'memory', detail: 'Allocate dynamic node on heap' },
+  { label: 'new DoublyListNode', text: 'new DoublyListNode(${1:10});', kind: 'memory', detail: 'Allocate dynamic doubly linked node on heap' },
   { label: 'new TreeNode', text: 'new TreeNode(${1:10});', kind: 'memory', detail: 'Allocate dynamic tree node on heap' },
   { label: 'delete', text: 'delete ${1:ptr};', kind: 'memory', detail: 'Deallocate heap memory' },
   { label: 'nullptr', text: 'nullptr', kind: 'keyword', detail: 'C++ null pointer literal' },

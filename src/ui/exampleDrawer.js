@@ -15,25 +15,26 @@ export class ExampleDrawer {
 
     this.activeCategory = 'All';
     this.searchQuery = '';
-    this.mode = 'pointer';
+    this.mode = 'unified';
 
     this.initEvents();
   }
 
   setMode(mode) {
-    this.mode = mode;
+    this.mode = mode || 'unified';
     this.activeCategory = 'All';
     const modalTitle = document.querySelector('#exampleModal .modal-title-wrap h2');
     if (modalTitle) {
-      modalTitle.textContent = mode === 'array_stl'
+      modalTitle.textContent = this.mode === 'array_stl'
         ? 'C++ Array & STL Examples'
-        : 'C++ Pointer & Memory Examples';
+        : (this.mode === 'unified' ? 'C++ Data Structure & Algorithm Examples' : 'C++ Pointer & Memory Examples');
     }
     this.renderCategoryFilters();
     this.renderCards();
   }
 
   isItemInCurrentMode(item) {
+    if (this.mode === 'unified') return true;
     const isArrayStl = item.structureType === 'dsa' ||
       item.category === 'Array Algorithms' ||
       item.category === 'C++ STL Containers' ||

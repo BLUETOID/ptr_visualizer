@@ -89,7 +89,12 @@ export class MemoryInspector {
           }
 
           let valDesc = '';
-          if (info.kind === 'array' || Array.isArray(info.value)) {
+          const isPtr = info.kind === 'pointer' || info.value === null ||
+            (typeof info.value === 'string' && (/^n\d+$/.test(info.value) || (heap && heap[info.value])));
+
+          if (isPtr) {
+            valDesc = this.describePointer(info.value, heap);
+          } else if (info.kind === 'array' || Array.isArray(info.value)) {
             const arr = Array.isArray(info.value) ? info.value : [];
             valDesc = `<span class="scalar-val">[${arr.slice(0, 10).map(formatVal).join(', ')}${arr.length > 10 ? '...' : ''}]</span> <span class="ptr-val">(len: ${arr.length})</span>`;
           } else if (info.value && info.value.isStack) {

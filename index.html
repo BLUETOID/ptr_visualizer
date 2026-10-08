@@ -30,45 +30,6 @@
 
   <!-- Top Navigation & Configuration Bar -->
   <header id="topbar">
-    <div class="brand-wrap" title="Recursion">
-      <div class="recursion-logo" title="Recursion">
-        <svg width="26" height="26" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- Outer recursive loop -->
-          <path d="M23.5 14C23.5 19.2467 19.2467 23.5 14 23.5C8.75329 23.5 4.5 19.2467 4.5 14C4.5 8.75329 8.75329 4.5 14 4.5C17.3 4.5 20.2 6.2 21.9 8.8" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"/>
-          <polygon points="24,4 23.5,9.5 18,9" fill="#38bdf8"/>
-          <!-- Inner recursive call loop -->
-          <path d="M18.8 14C18.8 16.651 16.651 18.8 14 18.8C11.349 18.8 9.2 16.651 9.2 14C9.2 11.349 11.349 9.2 14 9.2C15.65 9.2 17.1 10.05 18 11.4" stroke="#818cf8" stroke-width="2" stroke-linecap="round"/>
-          <polygon points="19.5,8.2 19.1,12 15.5,11.5" fill="#818cf8"/>
-          <!-- Base case center core -->
-          <circle cx="14" cy="14" r="2.2" fill="#38bdf8"/>
-        </svg>
-      </div>
-    </div>
-
-    <div class="topbar-separator"></div>
-
-    <!-- Dual-Studio Switcher: Pointers & Nodes vs Containers & STL -->
-    <div class="mode-toggle-wrap" title="Shift between Pointers & Nodes Studio and Containers & STL Studio">
-      <button id="modePointerBtn" class="mode-btn active" data-mode="pointer" title="Pointer, Linked List, Tree & Heap Memory Visualizer">
-        <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-        </svg>
-        <span>Pointers &amp; Nodes</span>
-      </button>
-      <button id="modeDsaBtn" class="mode-btn" data-mode="array_stl" title="Arrays, Vectors, Strings, Stacks, Queues, Graphs & STL Container Visualizer">
-        <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7"></rect>
-          <rect x="14" y="3" width="7" height="7"></rect>
-          <rect x="14" y="14" width="7" height="7"></rect>
-          <rect x="3" y="14" width="7" height="7"></rect>
-        </svg>
-        <span>Containers &amp; STL</span>
-      </button>
-    </div>
-
-    <div class="topbar-separator"></div>
-
     <div class="field-group">
       <label for="presetSelect">Algorithm Preset</label>
       <select id="presetSelect" title="Select a pre-built C++ algorithm"></select>

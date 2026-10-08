@@ -165,6 +165,146 @@ void main() {
   },
 
   // ==========================================
+  // HYBRID ALGORITHMS (POINTERS & STL CONTAINERS)
+  // ==========================================
+  tree_bfs_queue: {
+    id: 'tree_bfs_queue',
+    category: 'Hybrid: Pointers & Containers',
+    label: 'Tree BFS · Level Order (queue<TreeNode*>)',
+    badge: 'Tree & Queue',
+    info: 'Simultaneously visualizes Binary Tree nodes alongside std::queue<TreeNode*> and result std::vector<int>.',
+    structureType: 'tree',
+    entryFn: 'main',
+    defaultArray: '[1, 2, 3, 4, 5]',
+    extra: [],
+    code: `struct TreeNode {
+    int val;
+    TreeNode* left;
+    TreeNode* right;
+};
+
+void main() {
+    TreeNode* root = new TreeNode(1);
+    root->left = new TreeNode(2);
+    root->right = new TreeNode(3);
+    root->left->left = new TreeNode(4);
+    root->left->right = new TreeNode(5);
+
+    queue<TreeNode*> q;
+    vector<int> result;
+
+    q.push(root);
+
+    while (!q.empty()) {
+        TreeNode* curr = q.front();
+        q.pop();
+
+        result.push_back(curr->val);
+
+        if (curr->left != nullptr) {
+            q.push(curr->left);
+        }
+        if (curr->right != nullptr) {
+            q.push(curr->right);
+        }
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  merge_k_lists: {
+    id: 'merge_k_lists',
+    category: 'Hybrid: Pointers & Containers',
+    label: 'Merge K Lists · priority_queue & ListNode*',
+    badge: 'List & Heap',
+    info: 'Combines dynamic singly linked list nodes with std::priority_queue min-heap for sorted merging.',
+    structureType: 'list',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `struct ListNode {
+    int val;
+    ListNode* next;
+};
+
+void main() {
+    ListNode* l1 = new ListNode(1);
+    l1->next = new ListNode(4);
+
+    ListNode* l2 = new ListNode(2);
+    l2->next = new ListNode(5);
+
+    priority_queue<int, vector<int>, greater<int>> pq;
+    pq.push(l1->val);
+    pq.push(l2->val);
+
+    ListNode dummy(0);
+    ListNode* tail = &dummy;
+
+    while (!pq.empty()) {
+        int topVal = pq.top();
+        pq.pop();
+        ListNode* node = new ListNode(topVal);
+        tail->next = node;
+        tail = tail->next;
+    }
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  lru_cache: {
+    id: 'lru_cache',
+    category: 'Hybrid: Pointers & Containers',
+    label: 'LRU Cache · unordered_map & Doubly Linked List',
+    badge: 'Map & DLL',
+    info: 'Visualizes hash map lookup combined with doubly linked list splice operations.',
+    structureType: 'list',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `struct DoublyListNode {
+    int key;
+    int val;
+    DoublyListNode* prev;
+    DoublyListNode* next;
+};
+
+void main() {
+    DoublyListNode* head = new DoublyListNode(0);
+    DoublyListNode* tail = new DoublyListNode(0);
+    head->next = tail;
+    tail->prev = head;
+
+    unordered_map<int, int> cache;
+
+    // Insert key 1 -> val 100
+    DoublyListNode* n1 = new DoublyListNode(1);
+    n1->val = 100;
+    n1->next = head->next;
+    n1->prev = head;
+    head->next->prev = n1;
+    head->next = n1;
+    cache[1] = 100;
+
+    // Insert key 2 -> val 200
+    DoublyListNode* n2 = new DoublyListNode(2);
+    n2->val = 200;
+    n2->next = head->next;
+    n2->prev = head;
+    head->next->prev = n2;
+    head->next = n2;
+    cache[2] = 200;
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
+  // ==========================================
   // SINGLY LINKED LISTS
   // ==========================================
   lc21: {

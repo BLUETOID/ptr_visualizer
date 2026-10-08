@@ -347,9 +347,10 @@ function evalExpr(node) {
       if (type.startsWith('pair') || type.startsWith('std::pair')) {
         return { isPair: true, first: args[0] ?? 0, second: args[1] ?? 0 };
       }
-      if (type.startsWith('queue')) return { isQueue: true, elements: [], isChar: type.includes('<char') };
-      if (type.startsWith('stack')) return { isStack: true, elements: [], isChar: type.includes('<char') };
-      if (type.startsWith('priority_queue')) return { isPriorityQueue: true, elements: [], isMinHeap: type.includes('greater') };
+      if (type.startsWith('queue') || type.startsWith('std::queue')) return { isQueue: true, elements: [], isChar: type.includes('<char') };
+      if (type.startsWith('stack') || type.startsWith('std::stack')) return { isStack: true, elements: [], isChar: type.includes('<char') };
+      if (type.startsWith('deque') || type.startsWith('std::deque')) return { isDeque: true, elements: [], isChar: type.includes('<char') };
+      if (type.startsWith('priority_queue') || type.startsWith('std::priority_queue')) return { isPriorityQueue: true, elements: [], isMinHeap: type.includes('greater') };
       return allocNode(type, args.length ? args[0] : 0, {});
     }
     case 'ArrayInit': {
@@ -1086,8 +1087,10 @@ function assignTo(node, value, line) {
       }
       existing.value = value;
       if (Array.isArray(value)) existing.kind = 'array';
+      else if (value === null || (typeof value === 'string' && (/^n\d+$/.test(value) || (heap && heap[value])))) existing.kind = 'pointer';
     } else {
-      setVar(node.name, value, Array.isArray(value) ? 'array' : (typeof value === 'number' ? 'scalar' : 'pointer'));
+      const isPtr = value === null || (typeof value === 'string' && (/^n\d+$/.test(value) || (heap && heap[value])));
+      setVar(node.name, value, Array.isArray(value) ? 'array' : (isPtr ? 'pointer' : (typeof value === 'number' ? 'scalar' : 'pointer')));
     }
     return;
   }
@@ -1207,22 +1210,22 @@ function execVarDeclGroup(stmt) {
       value = { isMap: true, entries: {} };
       kind = 'map';
       desc = `${stmt.varType.name} ${decl.name} = map{}`;
-    } else if (stmt.varType.name.startsWith('stack')) {
+    } else if (stmt.varType.name.startsWith('stack') || stmt.varType.name.startsWith('std::stack')) {
       const isChar = stmt.varType.name.includes('<char');
       value = { isStack: true, elements: [], isChar };
       kind = 'stack';
       desc = `${stmt.varType.name} ${decl.name} = stack[]`;
-    } else if (stmt.varType.name.startsWith('queue')) {
+    } else if (stmt.varType.name.startsWith('queue') || stmt.varType.name.startsWith('std::queue')) {
       const isChar = stmt.varType.name.includes('<char');
       value = { isQueue: true, elements: [], isChar };
       kind = 'queue';
       desc = `${stmt.varType.name} ${decl.name} = queue[]`;
-    } else if (stmt.varType.name.startsWith('deque')) {
+    } else if (stmt.varType.name.startsWith('deque') || stmt.varType.name.startsWith('std::deque')) {
       const isChar = stmt.varType.name.includes('<char');
       value = { isDeque: true, elements: [], isChar };
       kind = 'deque';
       desc = `${stmt.varType.name} ${decl.name} = deque[]`;
-    } else if (stmt.varType.name.startsWith('pair')) {
+    } else if (stmt.varType.name.startsWith('pair') || stmt.varType.name.startsWith('std::pair')) {
       if (decl.init && decl.init.type === 'ArrayInit') {
         const elems = decl.init.elements.map(evalExpr);
         value = { isPair: true, first: elems[0] ?? 0, second: elems[1] ?? 0 };
@@ -1305,7 +1308,8 @@ function execVarDeclGroup(stmt) {
         value = truthy(value);
         kind = 'scalar';
       } else {
-        kind = Array.isArray(value) ? 'array' : (typeof value === 'object' ? 'object' : (typeof value === 'number' ? 'scalar' : 'string'));
+        const isPtr = value === null || (typeof value === 'string' && (/^n\d+$/.test(value) || (heap && heap[value])));
+        kind = Array.isArray(value) ? 'array' : (isPtr ? 'pointer' : (typeof value === 'object' ? 'object' : (typeof value === 'number' ? 'scalar' : 'string')));
       }
       desc = `${stmt.varType.name} ${decl.name} = ${valueDesc(value)}`;
     }
@@ -1470,6 +1474,12 @@ function executeStmt(stmt) {
         list = containerVal;
       } else if (containerVal && containerVal.elements) {
         list = containerVal.elements;
+      } else if (containerVal && containerVal.isMap) {
+        list = Object.entries(containerVal.entries || {}).map(([k, v]) => ({
+          isPair: true,
+          first: isNaN(Number(k)) ? k : Number(k),
+          second: v
+        }));
       }
       for (let idx = 0; idx < list.length; idx++) {
         const item = list[idx];

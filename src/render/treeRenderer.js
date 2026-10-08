@@ -72,6 +72,7 @@ export class TreeRenderer {
     }
 
     g.setAttribute('transform', `translate(${x}, ${y})`);
+    g.setAttribute('data-node-id', n.id);
     g.classList.toggle('node-active', activeIds.has(n.id));
     g.classList.toggle('node-freed', isFreed);
     g.classList.toggle('node-leak', isLeak);
@@ -190,7 +191,7 @@ export class TreeRenderer {
     return groups;
   }
 
-  render(heap, frames, meta = {}) {
+  render(heap, frames, meta = {}, opts = {}) {
     const seen = new Set();
     const activeIds = new Set(meta.highlight || []);
     const leakIds = meta.leaks || [];
@@ -198,6 +199,9 @@ export class TreeRenderer {
     const flashSet = new Set();
     if (meta.highlight) meta.highlight.forEach(id => flashSet.add(`node:${id}`));
     if (meta.changedEdge) flashSet.add(`edge:${meta.changedEdge.id}:${meta.changedEdge.field}`);
+
+    const originY = opts.offsetY !== undefined ? opts.offsetY : TREE_ORIGIN_Y;
+    const originX = opts.offsetX !== undefined ? opts.offsetX : TREE_ORIGIN_X;
 
     // Locate root: check first frame's 'root' pointer or first tree node in heap
     let rootId = null;
@@ -216,8 +220,8 @@ export class TreeRenderer {
       if (id === null || id === undefined || !heap[id] || heap[id].freed) return;
       visit(heap[id].left, depth + 1);
       pos[id] = {
-        x: TREE_ORIGIN_X + counter * TREE_SPACING_X,
-        y: TREE_ORIGIN_Y + depth * TREE_SPACING_Y
+        x: originX + counter * TREE_SPACING_X,
+        y: originY + depth * TREE_SPACING_Y
       };
       counter++;
       visit(heap[id].right, depth + 1);
@@ -231,8 +235,8 @@ export class TreeRenderer {
     Object.values(heap).forEach(n => {
       if (n.structType === 'TreeNode' && !pos[n.id] && !n.freed) {
         pos[n.id] = {
-          x: TREE_ORIGIN_X + (counter++) * TREE_SPACING_X,
-          y: TREE_ORIGIN_Y + 300
+          x: originX + (counter++) * TREE_SPACING_X,
+          y: originY + 300
         };
       }
     });
@@ -259,8 +263,8 @@ export class TreeRenderer {
     });
 
     // Null pointer anchor
-    const maxY = (counter > 0 ? Math.max(...Object.values(pos).map(pp => pp.y)) : TREE_ORIGIN_Y) + 140;
-    const nullX = TREE_ORIGIN_X + (counter > 1 ? (counter - 1) * TREE_SPACING_X / 2 : 0);
+    const maxY = (counter > 0 ? Math.max(...Object.values(pos).map(pp => pp.y)) : originY) + 140;
+    const nullX = originX + (counter > 1 ? (counter - 1) * TREE_SPACING_X / 2 : 0);
 
     // Badges
     const groups = this.collectPointerGroups(frames);

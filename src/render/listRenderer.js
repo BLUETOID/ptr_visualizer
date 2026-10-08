@@ -125,6 +125,7 @@ export class ListRenderer {
     const isLeak = leakIds && leakIds.includes(n.id);
 
     const g = this.getOrCreateGroup(key, 'list-node', seen);
+    g.setAttribute('data-node-id', n.id);
     if (!g.dataset.built) {
       g.innerHTML = `
         <rect class="val-cell"></rect>
@@ -332,7 +333,7 @@ export class ListRenderer {
     return groups;
   }
 
-  render(heap, frames, meta = {}) {
+  render(heap, frames, meta = {}, opts = {}) {
     const seen = new Set();
     const activeIds = new Set(meta.highlight || []);
     const leakIds = meta.leaks || [];
@@ -343,7 +344,7 @@ export class ListRenderer {
 
     const nodes = Object.values(heap).filter(n => n.structType !== 'TreeNode');
     if (nodes.length === 0) {
-      this.drawNullAnchor(ORIGIN_X, ROW_Y, seen);
+      this.drawNullAnchor(ORIGIN_X, opts.offsetY !== undefined ? opts.offsetY : ROW_Y, seen);
       this.sweepUnseen(seen);
       return;
     }
@@ -359,7 +360,8 @@ export class ListRenderer {
 
     const rowIndices = Array.from(rowNodesMap.keys()).sort((a, b) => a - b);
     const totalRows = hasMultipleRows ? rowIndices.length : 1;
-    const getY = (row) => (totalRows <= 1 ? ROW_Y : BASE_ROW_Y + row * ROW_GAP);
+    const rowYBase = opts.offsetY !== undefined ? opts.offsetY : (totalRows <= 1 ? ROW_Y : BASE_ROW_Y);
+    const getY = (row) => (totalRows <= 1 ? rowYBase : rowYBase + row * ROW_GAP);
 
     const hasDLL = nodes.some(n => n.structType === 'DoublyListNode' || n.prev !== undefined);
     const minCol = Math.min(0, ...nodes.map(n => n.col || 0));

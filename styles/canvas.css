@@ -264,3 +264,29 @@ svg#canvas.panning {
   transform: translateY(0);
   pointer-events: auto;
 }
+
+/* Linked Pointer & Node Cross-Highlighting */
+.dsa-cell.dsa-cell-ptr {
+  cursor: pointer;
+}
+
+.dsa-cell.dsa-cell-ptr .dsa-cell-box {
+  stroke: rgba(56, 189, 248, 0.6);
+  stroke-dasharray: 4, 2;
+  transition: all 0.2s ease;
+}
+
+.dsa-cell.dsa-cell-ptr:hover .dsa-cell-box {
+  stroke: #38bdf8;
+  stroke-width: 2.2px;
+  fill: rgba(56, 189, 248, 0.15);
+  stroke-dasharray: none;
+}
+
+.node-linked-hover circle,
+.node-linked-hover .val-cell {
+  stroke: #38bdf8 !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.8));
+  transition: all 0.2s ease;
+}

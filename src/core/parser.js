@@ -14,7 +14,7 @@ export class ParseError extends Error {
 const KNOWN_TYPES = new Set([
   'int', 'bool', 'void', 'long', 'double', 'float', 'short',
   'ListNode', 'TreeNode', 'DoublyListNode', 'auto', 'char', 'unsigned', 'size_t',
-  'string', 'std::string', 'vector', 'std::vector', 'queue', 'stack', 'deque',
+  'string', 'std::string', 'vector', 'std::vector', 'queue', 'std::queue', 'stack', 'std::stack', 'deque', 'std::deque',
   'priority_queue', 'std::priority_queue', 'set', 'std::set', 'unordered_set', 'std::unordered_set',
   'map', 'std::map', 'unordered_map', 'std::unordered_map', 'multiset', 'multimap', 'pair', 'std::pair'
 ]);

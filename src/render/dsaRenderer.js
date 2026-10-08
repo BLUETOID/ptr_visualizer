@@ -24,6 +24,39 @@ export function isIndexPointerName(name) {
   return common.test(name) || suffix.test(name);
 }
 
+export function formatCellValue(val, heap) {
+  if (val === null || val === undefined) return '';
+  if (heap && typeof val === 'string' && heap[val]) {
+    return `Node ${heap[val].val}`;
+  }
+  if (typeof val === 'string' && val.length === 1) return `'${val}'`;
+  if (typeof val === 'object' && val.isPair) return `(${val.first}, ${val.second})`;
+  return String(val);
+}
+
+function attachPointerInteractions(cell, txt, val, heap) {
+  if (heap && typeof val === 'string' && heap[val]) {
+    const node = heap[val];
+    cell.classList.add('dsa-cell-ptr');
+    cell.setAttribute('data-target-node', val);
+    cell.setAttribute('title', `Pointer to heap node &${val} (val: ${node.val})`);
+    txt.textContent = `Node ${node.val}`;
+    txt.setAttribute('font-size', '12');
+    txt.setAttribute('font-weight', '700');
+    txt.setAttribute('fill', '#38bdf8');
+    cell.addEventListener('mouseenter', () => {
+      const t = document.querySelector(`[data-node-id="${val}"]`);
+      if (t) t.classList.add('node-linked-hover');
+    });
+    cell.addEventListener('mouseleave', () => {
+      const t = document.querySelector(`[data-node-id="${val}"]`);
+      if (t) t.classList.remove('node-linked-hover');
+    });
+    return true;
+  }
+  return false;
+}
+
 export class DsaRenderer {
   constructor(viewport) {
     this.viewport = viewport;
@@ -36,7 +69,7 @@ export class DsaRenderer {
     }
   }
 
-  render(frames, heap, meta = {}) {
+  render(frames, heap, meta = {}, opts = {}) {
     this.clear();
 
     if (!frames || frames.length === 0) {
@@ -60,6 +93,13 @@ export class DsaRenderer {
     const scalarPointers = [];
     const otherScalars = [];
 
+    const isPointerValue = (val, info) => {
+      if (info && info.kind === 'pointer') return true;
+      if (val === null || val === undefined) return false;
+      if (typeof val === 'string' && (/^n\d+$/.test(val) || (heap && heap[val]))) return true;
+      return false;
+    };
+
     Object.entries(allVars).forEach(([name, info]) => {
       const val = info.value;
       if (val && val.isPriorityQueue) {
@@ -74,7 +114,7 @@ export class DsaRenderer {
         queues.push({ name, value: val.elements });
       } else if (val && val.isPair) {
         pairs.push({ name, value: val });
-      } else if (info.kind === 'string' || (typeof val === 'string' && val.length > 0 && !info.isCinStream)) {
+      } else if (!isPointerValue(val, info) && (info.kind === 'string' || (typeof val === 'string' && val.length > 0 && !info.isCinStream && info.kind !== 'char'))) {
         strings.push({ name, value: val });
       } else if (info.kind === 'array' || Array.isArray(val)) {
         arrays.push({ name, value: Array.isArray(val) ? val : [] });
@@ -106,7 +146,7 @@ export class DsaRenderer {
             queues.push({ name, value: val.elements });
           } else if (val && val.isPair && !pairs.find(p => p.name === name)) {
             pairs.push({ name, value: val });
-          } else if (typeof val === 'string' && !strings.find(s => s.name === name)) {
+          } else if (typeof val === 'string' && !isPointerValue(val, info) && info.kind !== 'pointer' && !info.isCinStream && info.kind !== 'char' && !strings.find(s => s.name === name)) {
             strings.push({ name, value: val });
           } else if ((info.kind === 'array' || Array.isArray(val)) && !arrays.find(a => a.name === name)) {
             arrays.push({ name, value: Array.isArray(val) ? val : [] });
@@ -121,52 +161,53 @@ export class DsaRenderer {
     // If still no containers, show a clean placeholder
     if (!hasContainers) {
       this.renderEmptyNotice('No Array or STL Container in Scope', 'Declare an array, vector, string, stack, queue, or map to visualize.');
-      this.renderVariableHud(otherScalars.concat(scalarPointers), [], 40, 100);
+      this.renderVariableHud(otherScalars.concat(scalarPointers), [], 40, opts.offsetY !== undefined ? opts.offsetY + 70 : 100);
       return;
     }
 
-    let curY = 30;
+    let curY = opts.offsetY !== undefined ? opts.offsetY : 30;
+    const itemGap = opts.compact ? 24 : 50;
 
     // 1. Render Variable Watch HUD at the top
     if (otherScalars.length > 0 || pairs.length > 0) {
       curY = this.renderVariableHud(otherScalars, pairs, 40, curY);
-      curY += 24;
+      curY += (opts.compact ? 16 : 24);
     }
 
     // 2. Render Priority Queues (Heaps)
     priorityQueues.forEach((pq) => {
-      curY = this.renderPriorityQueue(pq, meta, 40, curY);
-      curY += 50;
+      curY = this.renderPriorityQueue(pq, meta, 40, curY, heap);
+      curY += itemGap;
     });
 
     // 3. Render Sets
     sets.forEach((st) => {
-      curY = this.renderSet(st, meta, 40, curY);
-      curY += 50;
+      curY = this.renderSet(st, meta, 40, curY, heap);
+      curY += itemGap;
     });
 
     // 4. Render Maps
     maps.forEach((mp) => {
-      curY = this.renderMap(mp, meta, 40, curY);
-      curY += 50;
+      curY = this.renderMap(mp, meta, 40, curY, heap);
+      curY += itemGap;
     });
 
     // 5. Render STL Stacks
     stacks.forEach((st) => {
-      curY = this.renderStack(st, meta, 40, curY);
-      curY += 50;
+      curY = this.renderStack(st, meta, 40, curY, heap);
+      curY += itemGap;
     });
 
     // 6. Render STL Queues
     queues.forEach((q) => {
-      curY = this.renderQueue(q, meta, 40, curY);
-      curY += 50;
+      curY = this.renderQueue(q, meta, 40, curY, heap);
+      curY += itemGap;
     });
 
     // 7. Render Strings
     strings.forEach((strObj) => {
       curY = this.renderString(strObj, scalarPointers, meta, 40, curY);
-      curY += 50;
+      curY += itemGap;
     });
 
     // 8. Render Arrays, Matrices, and Graph Adjacency Lists
@@ -179,13 +220,13 @@ export class DsaRenderer {
       );
 
       if (isAdjList) {
-        curY = this.renderAdjacencyList(arrObj, scalarPointers, meta, 40, curY);
+        curY = this.renderAdjacencyList(arrObj, scalarPointers, meta, 40, curY, heap);
       } else if (is2D) {
-        curY = this.render2DMatrix(arrObj, scalarPointers, meta, 40, curY);
+        curY = this.render2DMatrix(arrObj, scalarPointers, meta, 40, curY, heap);
       } else {
-        curY = this.render1DArray(arrObj, scalarPointers, meta, 40, curY);
+        curY = this.render1DArray(arrObj, scalarPointers, meta, 40, curY, heap);
       }
-      curY += 60;
+      curY += itemGap + 10;
     });
   }
 
@@ -347,7 +388,7 @@ export class DsaRenderer {
     return startY + cardY + cardH;
   }
 
-  render1DArray(arrObj, allPointers, meta, startX, startY) {
+  render1DArray(arrObj, allPointers, meta, startX, startY, heap = {}) {
     const arr = arrObj.value;
     const arrName = arrObj.name;
     const len = arr.length;
@@ -451,7 +492,10 @@ export class DsaRenderer {
           x: cellW / 2,
           y: cellH / 2
         });
-        valText.textContent = typeof cellVal === 'string' && cellVal.length === 1 ? `'${cellVal}'` : (cellVal !== undefined ? cellVal : '');
+        const isPtr = attachPointerInteractions(cellGroup, valText, cellVal, heap);
+        if (!isPtr) {
+          valText.textContent = typeof cellVal === 'string' && cellVal.length === 1 ? `'${cellVal}'` : (cellVal !== undefined ? cellVal : '');
+        }
       }
 
       // Index Pill Badge (Below cell)
@@ -599,7 +643,7 @@ export class DsaRenderer {
     labelText.textContent = 'SWAP';
   }
 
-  renderStack(stObj, meta, startX, startY) {
+  renderStack(stObj, meta, startX, startY, heap = {}) {
     const elements = stObj.value;
     const name = stObj.name;
     const count = elements.length;
@@ -659,7 +703,10 @@ export class DsaRenderer {
         y: cellH / 2,
         'font-size': 14
       });
-      txt.textContent = typeof val === 'string' && val.length === 1 ? `'${val}'` : (val !== undefined ? val : '');
+      const isPtr = attachPointerInteractions(cell, txt, val, heap);
+      if (!isPtr) {
+        txt.textContent = typeof val === 'string' && val.length === 1 ? `'${val}'` : (val !== undefined ? val : '');
+      }
 
       // If top element, mark with TOP badge
       if (i === 0) {
@@ -682,7 +729,7 @@ export class DsaRenderer {
     return startY + startElementsY + totalH + 20;
   }
 
-  renderQueue(qObj, meta, startX, startY) {
+  renderQueue(qObj, meta, startX, startY, heap = {}) {
     const elements = qObj.value;
     const name = qObj.name;
     const count = elements.length;
@@ -737,7 +784,10 @@ export class DsaRenderer {
         y: cellH / 2,
         'font-size': 15
       });
-      txt.textContent = typeof val === 'string' && val.length === 1 ? `'${val}'` : (val !== undefined ? val : '');
+      const isPtr = attachPointerInteractions(cell, txt, val, heap);
+      if (!isPtr) {
+        txt.textContent = typeof val === 'string' && val.length === 1 ? `'${val}'` : (val !== undefined ? val : '');
+      }
     }
 
     // Back marker
@@ -928,7 +978,7 @@ export class DsaRenderer {
     return arrayY + cellH + 45;
   }
 
-  renderPriorityQueue(pqObj, meta, startX, startY) {
+  renderPriorityQueue(pqObj, meta, startX, startY, heap = {}) {
     const elements = pqObj.value || [];
     const name = pqObj.name;
     const isMin = pqObj.isMinHeap;
@@ -977,7 +1027,10 @@ export class DsaRenderer {
         fill: isTop ? '#fbbf24' : '#e2e8f0',
         'font-weight': isTop ? 700 : 500
       });
-      txt.textContent = val !== undefined ? val : '';
+      const isPtr = attachPointerInteractions(cell, txt, val, heap);
+      if (!isPtr) {
+        txt.textContent = val !== undefined ? val : '';
+      }
 
       if (isTop) {
         const topLabel = svgEl('text', pqGroup, {
@@ -1046,7 +1099,7 @@ export class DsaRenderer {
     return startY + setY + cellH + 30;
   }
 
-  renderMap(mapObj, meta, startX, startY) {
+  renderMap(mapObj, meta, startX, startY, heap = {}) {
     const entries = Object.entries(mapObj.value || {});
     const name = mapObj.name;
     const count = entries.length;
@@ -1114,10 +1167,25 @@ export class DsaRenderer {
         'dominant-baseline': 'central',
         fill: '#34d399',
         'font-family': 'var(--font-mono)',
-        'font-size': 13,
+        'font-size': 12,
         'font-weight': 700
       });
-      valTxt.textContent = val;
+      if (heap && typeof val === 'string' && heap[val]) {
+        valTxt.textContent = `Node ${heap[val].val}`;
+        card.classList.add('dsa-cell-ptr');
+        card.setAttribute('data-target-node', val);
+        card.setAttribute('title', `Pointer to heap node &${val} (val: ${heap[val].val})`);
+        card.addEventListener('mouseenter', () => {
+          const t = document.querySelector(`[data-node-id="${val}"]`);
+          if (t) t.classList.add('node-linked-hover');
+        });
+        card.addEventListener('mouseleave', () => {
+          const t = document.querySelector(`[data-node-id="${val}"]`);
+          if (t) t.classList.remove('node-linked-hover');
+        });
+      } else {
+        valTxt.textContent = val;
+      }
     });
 
     const rowsCount = Math.max(1, Math.ceil(count / 6));

@@ -38,6 +38,14 @@ Because it uses a custom recursive-descent parser and JavaScript virtual machine
     - Conditional compilation directives: `#ifdef`, `#ifndef`, `#if`, `#elif`, `#else`, `#endif`.
     - `#include` directives are ignored or skipped—standard LeetCode headers (`<bits/stdc++.h>`, `<iostream>`, `<vector>`, `<stack>`, `<string>`) are built into the visualizer automatically.
 
+### 2.4 Code Editor Indentation & Formatting
+- **Smart Indentation Engine**:
+  - `Enter` automatically preserves current indentation depth.
+  - An opening `{` triggers automatic +4 space indentation for the subsequent line.
+  - Hitting `Enter` between `{}` automatically expands into a standard 3-line block with the cursor indented on the middle line and the closing brace aligned.
+  - `Backspace` on 4-space boundaries smartly unindents by a full indentation level (4 spaces).
+  - `Tab` and `Shift+Tab` support single-line and multi-line indent/unindent operations without losing cursor state.
+
 ---
 
 ## 3. Grammar & Parser Limitations
@@ -141,18 +149,21 @@ Because it uses a custom recursive-descent parser and JavaScript virtual machine
 
 ## 6. Visualization & UI Limitations
 
-### 6.1 Studio Isolation vs. Split-Screen
-- **Dual Studios**:
-  - The application provides two specialized lenses:
-    1. **Pointers & Nodes Studio** (Linked lists, Trees, Heap addresses, Leaks).
-    2. **Containers & STL Studio** (Arrays, Vectors, Strings, Stacks, Queues, Graphs, Sets, Maps).
-  - **Limitation**: The two studios are rendered in distinct canvas viewports. There is currently no simultaneous split-screen canvas that displays a heap linked list alongside an array in the exact same SVG viewport.
+### 6.1 Unified Studio Multi-Band Layout
+- **Unified Studio Architecture**:
+  - Pointers & Nodes and Containers & STL are now unified into a single coherent visualizer canvas.
+  - When code involves both STL containers and heap pointer structures (e.g., Tree BFS with `queue<TreeNode*>`, Merge K Sorted Lists with `priority_queue<ListNode*>`, or LRU Cache with `unordered_map` and Doubly Linked List), the canvas uses a dynamic multi-band vertical layout:
+    - **Upper Band ($Y \approx 25$)**: Active STL containers (Queues, Stacks, Priority Queues, Deques, Maps, Arrays).
+    - **Lower Band ($Y \approx 240$)**: Heap nodes (Binary Trees, Singly/Doubly Linked Lists).
+    - **Node Linking**: Pointer addresses held within container elements are rendered as `Node <val>` badges and feature interactive hover highlighting directly linking to the target heap node.
+- **Single Mode Focus**:
+  - When only STL containers or only heap structures exist, the visualizer automatically renders in full-height single-band mode with optimal vertical centering.
 
 ### 6.2 Visual Canvas Capacity & Layout
 - **Tree Layout**:
-  - Fixed binary tree layout (`left` and `right` child pointers). $N$-ary trees (trees where a node has an arbitrary list of children `vector<Node*> children`) are not auto-laid out as visual trees.
+  - Binary tree layout is optimized for balanced or semi-balanced trees with up to depth 5–6 ($2^5$ leaf span). Deep skewed trees (e.g. 15 nodes in a line) may require panning. $N$-ary trees (`vector<Node*> children`) are not auto-laid out as visual trees.
 - **Graph Layout**:
-  - Graphs are rendered via the **Adjacency List** visualizer (`adj[u] -> [neighbors]`). General graphs are not currently laid out as force-directed physics node graphs.
+  - Graphs are rendered via the **Adjacency List** visualizer (`adj[u] -> [neighbors]`). Arbitrary general graphs are not currently laid out as force-directed physics node graphs.
 - **Horizontal Screen Density**:
   - Displaying arrays with more than 30–40 elements requires horizontal SVG panning and zooming.
 

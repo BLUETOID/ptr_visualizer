@@ -128,6 +128,64 @@ export const ARRAY_STL_SNIPPETS = [
   }
 ];
 
+// Unified Studio quick snippet toolbar
+export const UNIFIED_SNIPPETS = [
+  {
+    id: 'tree_bfs',
+    label: '+ Tree BFS (queue)',
+    description: 'Level order traversal pattern with queue<TreeNode*>',
+    code: `    queue<TreeNode*> q;\n    q.push(root);\n    while (!q.empty()) {\n        TreeNode* curr = q.front();\n        q.pop();\n        if (curr->left) q.push(curr->left);\n        if (curr->right) q.push(curr->right);\n    }\n`
+  },
+  {
+    id: 'traverse',
+    label: '+ Traversal Loop',
+    description: 'Standard while loop advancing pointer through linked list',
+    code: `    while (curr != nullptr) {\n        // do work\n        curr = curr->next;\n    }\n`
+  },
+  {
+    id: 'two_pointers',
+    label: '+ Two Pointers',
+    description: 'Fast and slow pointer setup for middle or cycle detection',
+    code: `    ListNode* slow = head;\n    ListNode* fast = head;\n`
+  },
+  {
+    id: 'vector_init',
+    label: '+ Vector Push',
+    description: 'std::vector declaration and push_back',
+    code: `    vector<int> nums = {1, 2, 3};\n    nums.push_back(4);\n`
+  },
+  {
+    id: 'stl_queue',
+    label: '+ Queue (FIFO)',
+    description: 'std::queue push, pop, and front',
+    code: `    queue<int> q;\n    q.push(10);\n    q.push(20);\n    int frontVal = q.front();\n    q.pop();\n`
+  },
+  {
+    id: 'stl_stack',
+    label: '+ Stack (LIFO)',
+    description: 'std::stack push, pop, and top',
+    code: `    stack<int> s;\n    s.push(10);\n    s.push(20);\n    int topVal = s.top();\n    s.pop();\n`
+  },
+  {
+    id: 'tree_base',
+    label: '+ Tree Base Case',
+    description: 'Null check base case for recursive tree functions',
+    code: `    if (root == nullptr) {\n        return nullptr;\n    }\n`
+  },
+  {
+    id: 'new_node',
+    label: '+ New Heap Node',
+    description: 'Allocate dynamic node on heap using new',
+    code: `    ListNode* newNode = new ListNode(100);\n    newNode->next = head;\n    head = newNode;\n`
+  },
+  {
+    id: 'safe_delete',
+    label: '+ Safe Delete',
+    description: 'Unlink and deallocate memory safely with delete',
+    code: `    ListNode* toDelete = curr->next;\n    curr->next = curr->next->next;\n    delete toDelete;\n`
+  }
+];
+
 // Aliases for backwards compatibility
 export const DSA_SNIPPETS = ARRAY_STL_SNIPPETS;
 export const SNIPPETS = POINTER_SNIPPETS;

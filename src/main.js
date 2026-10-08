@@ -12,7 +12,7 @@ import { TreeRenderer } from './render/treeRenderer.js';
 import { DsaRenderer } from './render/dsaRenderer.js';
 
 import { EXAMPLES_CATALOG, buildListHelper, buildMultiListHelper, buildDoublyListHelper } from './examples/catalog.js';
-import { SNIPPETS, POINTER_SNIPPETS, ARRAY_STL_SNIPPETS, DSA_SNIPPETS } from './examples/snippets.js';
+import { SNIPPETS, POINTER_SNIPPETS, ARRAY_STL_SNIPPETS, DSA_SNIPPETS, UNIFIED_SNIPPETS } from './examples/snippets.js';
 
 import { EditorManager } from './ui/editor.js';
 import { ControlsManager } from './ui/controls.js';
@@ -224,7 +224,7 @@ class App {
       onCodeChange: () => this.rebuildAndRun(),
       onCursorLine: (line) => this.handleCursorLine(line)
     });
-    this.editor.renderSnippets(SNIPPETS);
+    this.editor.renderSnippets(UNIFIED_SNIPPETS);
 
     // 4. Controls
     this.controls = new ControlsManager({
@@ -245,19 +245,27 @@ class App {
     });
   }
 
-  populatePresetDropdown(mode) {
+  populatePresetDropdown(mode = null) {
     if (!this.presetSelect) return;
     this.presetSelect.innerHTML = '';
     const groups = {};
     Object.entries(EXAMPLES_CATALOG).forEach(([id, ex]) => {
-      const isArrayStl = ex.structureType === 'dsa' ||
-        ex.category === 'Array Algorithms' ||
-        ex.category === 'C++ STL Containers' ||
-        ex.category === 'C++ STL Algorithms' ||
-        ex.category === 'DSA & Arrays';
-
-      if (mode === 'array_stl' && !isArrayStl) return;
-      if (mode === 'pointer' && isArrayStl) return;
+      if (mode === 'array_stl') {
+        const isArrayStl = ex.structureType === 'dsa' ||
+          ex.category === 'Array Algorithms' ||
+          ex.category === 'C++ STL Containers' ||
+          ex.category === 'C++ STL Algorithms' ||
+          ex.category === 'DSA & Arrays' ||
+          ex.category === 'Hybrid: Pointers & Containers';
+        if (!isArrayStl) return;
+      } else if (mode === 'pointer') {
+        const isArrayStl = (ex.structureType === 'dsa' ||
+          ex.category === 'Array Algorithms' ||
+          ex.category === 'C++ STL Containers' ||
+          ex.category === 'C++ STL Algorithms' ||
+          ex.category === 'DSA & Arrays') && ex.category !== 'Hybrid: Pointers & Containers';
+        if (isArrayStl) return;
+      }
 
       const cat = ex.category || 'General';
       if (!groups[cat]) {
@@ -274,67 +282,11 @@ class App {
   }
 
   setMode(mode, triggerRender = true) {
-    const normalizedMode = (mode === 'dsa' || mode === 'array_stl') ? 'array_stl' : 'pointer';
-    if (this.visualizerMode === normalizedMode && !triggerRender) return;
-
-    // Buffer previous mode code & inputs to preserve user work
-    if (!this.modeBuffers) this.modeBuffers = {};
-    if (this.editor && this.currentPresetId) {
-      this.modeBuffers[this.visualizerMode] = {
-        presetId: this.currentPresetId,
-        code: this.editor.getCode(),
-        arrayInput: this.arrayInput ? this.arrayInput.value : ''
-      };
-    }
-
-    this.visualizerMode = normalizedMode;
-
-    const stackTitle = document.querySelector('#stackWrap .panel-title span');
-    if (this.modePointerBtn && this.modeDsaBtn) {
-      if (normalizedMode === 'array_stl') {
-        this.modeDsaBtn.classList.add('active', 'dsa-active');
-        this.modePointerBtn.classList.remove('active');
-        this.editor.renderSnippets(ARRAY_STL_SNIPPETS);
-        if (this.inputLabel) this.inputLabel.textContent = 'Initial Array / Input Stream';
-        if (this.newScratchpadBtn) this.newScratchpadBtn.textContent = '+ Blank Scratchpad';
-        if (stackTitle) stackTitle.textContent = 'Virtual Call Stack & Scope';
-      } else {
-        this.modePointerBtn.classList.add('active');
-        this.modeDsaBtn.classList.remove('active', 'dsa-active');
-        this.editor.renderSnippets(POINTER_SNIPPETS);
-        if (this.inputLabel) this.inputLabel.textContent = 'Initial Node Values';
-        if (this.newScratchpadBtn) this.newScratchpadBtn.textContent = '+ Blank Scratchpad';
-        if (stackTitle) stackTitle.textContent = 'Virtual Call Stack & Heap';
-      }
-    }
-
+    this.visualizerMode = mode;
+    this.populatePresetDropdown();
     if (this.drawer) {
-      this.drawer.setMode(normalizedMode);
+      this.drawer.setMode(mode);
     }
-
-    this.populatePresetDropdown(normalizedMode);
-
-    if (this.modeBuffers && this.modeBuffers[normalizedMode]) {
-      const saved = this.modeBuffers[normalizedMode];
-      this.loadExample(saved.presetId, true);
-      this.editor.setCode(saved.code);
-      if (this.arrayInput) this.arrayInput.value = saved.arrayInput;
-      this.rebuildAndRun();
-      return;
-    }
-
-    // If current preset does not belong to the selected mode, switch to that mode's default preset
-    const curPreset = EXAMPLES_CATALOG[this.currentPresetId];
-    const curIsArrayStl = curPreset && (curPreset.structureType === 'dsa' || curPreset.category === 'Array Algorithms' || curPreset.category === 'C++ STL Containers' || curPreset.category === 'C++ STL Algorithms' || curPreset.category === 'DSA & Arrays');
-
-    if (normalizedMode === 'array_stl' && !curIsArrayStl) {
-      this.loadExample('dsa_scratchpad');
-      return;
-    } else if (normalizedMode === 'pointer' && curIsArrayStl) {
-      this.loadExample('lc206');
-      return;
-    }
-
     if (triggerRender && this.timeline.length > 0) {
       this.renderStep(this.currentStep, false);
     }
@@ -347,17 +299,6 @@ class App {
 
     this.currentPresetId = id;
     this.structureType = ex.structureType;
-
-    const isArrayStl = ex.structureType === 'dsa' ||
-      ex.category === 'Array Algorithms' ||
-      ex.category === 'C++ STL Containers' ||
-      ex.category === 'C++ STL Algorithms' ||
-      ex.category === 'DSA & Arrays';
-
-    const targetMode = isArrayStl ? 'array_stl' : 'pointer';
-    if (this.visualizerMode !== targetMode) {
-      this.setMode(targetMode, false);
-    }
 
     this.presetSelect.value = id;
 
@@ -620,10 +561,13 @@ class App {
         if (!f.vars) continue;
         for (const info of Object.values(f.vars)) {
           const val = info.value;
+          const isPtr = (info && info.kind === 'pointer') ||
+            val === null ||
+            (typeof val === 'string' && (/^n\d+$/.test(val) || (snap.heap && snap.heap[val])));
           if (
-            (val && (val.isStack || val.isQueue || val.isPriorityQueue || val.isSet || val.isMap || val.isPair)) ||
+            (val && (val.isStack || val.isQueue || val.isPriorityQueue || val.isSet || val.isMap || val.isPair || val.isDeque)) ||
             info.kind === 'array' || Array.isArray(val) ||
-            info.kind === 'string' || (typeof val === 'string' && val.length > 0 && !info.isCinStream)
+            (!isPtr && (info.kind === 'string' || (typeof val === 'string' && val.length > 0 && !info.isCinStream && info.kind !== 'char')))
           ) {
             hasContainers = true;
             break;
@@ -633,49 +577,50 @@ class App {
       }
     }
 
-    // Render Canvas with seamless dual-studio fallback so right-side canvas NEVER goes blank
-    if (this.visualizerMode === 'array_stl' || this.visualizerMode === 'dsa') {
-      if (hasContainers || !hasHeapNodes) {
+    // Unified Studio Rendering: render containers and/or pointer structures seamlessly
+    const svgEl = document.getElementById('canvas');
+
+    if (hasContainers && hasHeapNodes) {
+      // Coordinated Dynamic Multi-Band Layout:
+      // Containers in upper band (offsetY: 25, compact: true)
+      // Pointer structures in lower band (offsetY: 240)
+      if (svgEl) svgEl.setAttribute('viewBox', '0 0 1000 800');
+
+      this.dsaRenderer.render(snap.frames, snap.heap, snap.meta || {}, { offsetY: 25, compact: true });
+      if (hasTreeNodes || this.structureType === 'tree') {
         this.listRenderer.clear();
-        this.treeRenderer.clear();
-        this.dsaRenderer.render(snap.frames, snap.heap, snap.meta || {});
+        this.treeRenderer.render(snap.heap, snap.frames, snap.meta || {}, { offsetY: 240 });
       } else {
-        // Fallback: Pointer nodes present in Containers Studio
-        this.dsaRenderer.clear();
-        if (hasTreeNodes || this.structureType === 'tree') {
-          this.listRenderer.clear();
-          this.treeRenderer.render(snap.heap, snap.frames, snap.meta || {});
-        } else {
-          this.treeRenderer.clear();
-          this.listRenderer.render(snap.heap, snap.frames, snap.meta || {});
-        }
+        this.treeRenderer.clear();
+        this.listRenderer.render(snap.heap, snap.frames, snap.meta || {}, { offsetY: 250 });
+      }
+    } else if (hasContainers) {
+      // Containers only: default view
+      if (svgEl) svgEl.setAttribute('viewBox', '0 0 1000 600');
+      this.listRenderer.clear();
+      this.treeRenderer.clear();
+      this.dsaRenderer.render(snap.frames, snap.heap, snap.meta || {});
+    } else if (hasHeapNodes) {
+      // Pointer nodes only: default view
+      if (svgEl) svgEl.setAttribute('viewBox', '0 0 1000 600');
+      this.dsaRenderer.clear();
+      if (hasTreeNodes || this.structureType === 'tree') {
+        this.listRenderer.clear();
+        this.treeRenderer.render(snap.heap, snap.frames, snap.meta || {});
+      } else {
+        this.treeRenderer.clear();
+        this.listRenderer.render(snap.heap, snap.frames, snap.meta || {});
       }
     } else {
-      // Pointer Studio
-      if (hasHeapNodes) {
-        this.dsaRenderer.clear();
-        if (hasTreeNodes || this.structureType === 'tree') {
-          this.listRenderer.clear();
-          this.treeRenderer.render(snap.heap, snap.frames, snap.meta || {});
-        } else {
-          this.treeRenderer.clear();
-          this.listRenderer.render(snap.heap, snap.frames, snap.meta || {});
-        }
-      } else if (hasContainers) {
-        // Fallback: Containers/Arrays present in Pointer Studio (e.g. stack<char>, vector<int>)
+      // Default / empty scope
+      if (svgEl) svgEl.setAttribute('viewBox', '0 0 1000 600');
+      this.dsaRenderer.clear();
+      if (this.structureType === 'tree') {
         this.listRenderer.clear();
-        this.treeRenderer.clear();
-        this.dsaRenderer.render(snap.frames, snap.heap, snap.meta || {});
+        this.treeRenderer.render(snap.heap, snap.frames, snap.meta || {});
       } else {
-        // Default: render list / null anchor
-        this.dsaRenderer.clear();
-        if (this.structureType === 'tree') {
-          this.listRenderer.clear();
-          this.treeRenderer.render(snap.heap, snap.frames, snap.meta || {});
-        } else {
-          this.treeRenderer.clear();
-          this.listRenderer.render(snap.heap, snap.frames, snap.meta || {});
-        }
+        this.treeRenderer.clear();
+        this.listRenderer.render(snap.heap, snap.frames, snap.meta || {});
       }
     }
   }

@@ -19,6 +19,9 @@ const KNOWN_TYPES = new Set([
   'map', 'std::map', 'unordered_map', 'std::unordered_map', 'multiset', 'multimap', 'pair', 'std::pair'
 ]);
 
+const MAX_PARSE_DEPTH = 200;
+let parseDepth = 0;
+
 function peek(p) {
   return p.tokens[Math.min(p.pos, p.tokens.length - 1)];
 }
@@ -60,6 +63,8 @@ export function parseProgram(tokens) {
   const order = [];
   const topLevelStmts = [];
 
+  parseDepth = 0; // Reset depth for each new parse
+
   while (peek(p).type !== 'eof') {
     const t = peek(p);
     if (t.value === 'struct' || t.value === 'class') {
@@ -68,6 +73,7 @@ export function parseProgram(tokens) {
         structs[s.name] = s;
         KNOWN_TYPES.add(s.name);
       } catch (err) {
+        if (err.isFatal) throw err;
         skipToSync(p);
       }
       continue;
@@ -113,7 +119,7 @@ export function parseProgram(tokens) {
       order.push(fn.name);
       continue;
     } catch (e) {
-      if (e._insideFunction) {
+      if (e.isFatal || e._insideFunction) {
         throw e;
       }
       p.pos = save;
@@ -123,7 +129,9 @@ export function parseProgram(tokens) {
     try {
       const stmt = parseStmt(p);
       topLevelStmts.push(stmt);
+      continue;
     } catch (err) {
+      if (err.isFatal) throw err;
       p.pos = save;
       next(p); // Skip one token to resynchronize
     }
@@ -162,6 +170,14 @@ function parseStruct(p, functions = {}, order = []) {
   if (nameTok.type !== 'id') {
     throw new ParseError('Expected struct name', nameTok.line, nameTok.col);
   }
+  const structName = nameTok.value;
+  const structDef = {
+    name: structName,
+    fields: [],
+    methods: {},
+    constructors: []
+  };
+
   expect(p, '{');
   while (peek(p).value !== '}' && peek(p).type !== 'eof') {
     const cur = peek(p);
@@ -170,20 +186,99 @@ function parseStruct(p, functions = {}, order = []) {
       if (peek(p).value === ':') next(p);
       continue;
     }
-    const save = p.pos;
+
+    // 1. Destructor: ~ClassName() { ... }
+    if (cur.value === '~') {
+      next(p);
+      if (peek(p).value === structName) {
+        next(p);
+        expect(p, '(');
+        expect(p, ')');
+        parseBlock(p);
+        continue;
+      }
+    }
+
+    // 2. Constructor: ClassName(...) [ : init_list ] { ... }
+    if (cur.value === structName) {
+      const saveCtor = p.pos;
+      try {
+        next(p); // consume structName
+        if (peek(p).value === '(') {
+          expect(p, '(');
+          const params = [];
+          while (!isPunct(peek(p), ')')) {
+            expectNotEOF(p);
+            const t = parseType(p);
+            const n = next(p);
+            if (n.type !== 'id') throw new ParseError('Expected parameter name', n.line, n.col);
+            let defaultVal = null;
+            if (peek(p).value === '=') {
+              next(p);
+              defaultVal = parseExpr(p);
+            }
+            params.push({ type: t, name: n.value, defaultVal, line: n.line });
+            if (isPunct(peek(p), ',')) next(p);
+            else break;
+          }
+          expect(p, ')');
+
+          // Optional constructor initializer list: : val(x), next(NULL)
+          if (peek(p).value === ':') {
+            next(p);
+            while (peek(p).value !== '{' && peek(p).value !== ';' && peek(p).type !== 'eof') {
+              next(p);
+            }
+          }
+
+          let body = [];
+          if (peek(p).value === ';') {
+            next(p);
+          } else {
+            body = parseBlock(p);
+          }
+          const ctor = { name: structName, params, body, isCtor: true, line: cur.line };
+          structDef.constructors.push(ctor);
+          continue;
+        }
+      } catch (err) {
+        if (err && err.isFatal) throw err;
+        p.pos = saveCtor;
+      }
+    }
+
+    // 3. Member function
+    const saveFn = p.pos;
     try {
       const fn = parseFunctionDecl(p);
-      functions[fn.name] = fn;
-      order.push(fn.name);
+      fn.className = structName;
+      structDef.methods[fn.name] = fn;
+      if (!functions[fn.name]) {
+        functions[fn.name] = fn;
+        order.push(fn.name);
+      }
       continue;
-    } catch (_) {
-      p.pos = save;
+    } catch (err) {
+      if (err && err.isFatal) throw err;
+      p.pos = saveFn;
     }
+
+    // 4. Member variable declaration (e.g. queue<int> q1, q2; or int val;)
+    const saveVar = p.pos;
+    try {
+      const varDecl = parseVarDeclStmt(p);
+      structDef.fields.push(varDecl);
+      continue;
+    } catch (err) {
+      if (err && err.isFatal) throw err;
+      p.pos = saveVar;
+    }
+
     next(p);
   }
   expect(p, '}');
   if (peek(p).value === ';') next(p);
-  return { name: nameTok.value };
+  return structDef;
 }
 
 function parseType(p) {
@@ -569,7 +664,18 @@ function parseDoWhile(p) {
 }
 
 function parseExpr(p) {
-  return parseAssignment(p);
+  parseDepth++;
+  if (parseDepth > MAX_PARSE_DEPTH) {
+    const t = peek(p);
+    const err = new ParseError('Expression too deeply nested (possible malicious input)', t.line, t.col);
+    err.isFatal = true;
+    throw err;
+  }
+  try {
+    return parseAssignment(p);
+  } finally {
+    parseDepth--;
+  }
 }
 
 function parseAssignment(p) {

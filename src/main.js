@@ -505,7 +505,7 @@ class App {
           if (Array.isArray(parsed)) cinRaw = parsed.flat(Infinity).join(' ');
         } catch (_) {}
       }
-      timeline = runProgram(fn, initial.args, ast.functions, cinRaw);
+      timeline = runProgram(fn, initial.args, ast.functions, cinRaw, ast.structs);
     } catch (e) {
       this.editor.setStatus('Runtime Error', 'error');
       this.controls.updateExplanation(`Runtime exception: ${e.message}`, true);
@@ -758,9 +758,19 @@ class App {
       const raw = localStorage.getItem('ptrviz_state');
       if (!raw) return null;
       const state = JSON.parse(raw);
-      if (!state.presetId) return null;
+      // Schema validation: reject malformed or tampered data
+      if (typeof state !== 'object' || state === null) return null;
+      if (typeof state.presetId !== 'string' || !state.presetId) return null;
+      if (state.code !== undefined && typeof state.code !== 'string') return null;
+      if (state.arrayInput !== undefined && typeof state.arrayInput !== 'string') return null;
+      if (state.visualizerMode !== undefined &&
+          !['pointer', 'array_stl', 'unified'].includes(state.visualizerMode)) {
+        state.visualizerMode = 'pointer';
+      }
       return state;
     } catch (e) {
+      // If localStorage is corrupted, clear it to avoid repeated crashes
+      try { localStorage.removeItem('ptrviz_state'); } catch (_) {}
       return null;
     }
   }

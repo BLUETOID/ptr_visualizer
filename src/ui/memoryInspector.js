@@ -4,6 +4,16 @@
 
 import { colorForVar } from '../render/listRenderer.js';
 
+function escapeHtml(text) {
+  if (typeof text !== 'string') return String(text ?? '');
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export class MemoryInspector {
   constructor(stackPanelId, memoryBadgeId) {
     this.stackPanel = document.getElementById(stackPanelId);
@@ -42,9 +52,9 @@ export class MemoryInspector {
   describePointer(ptrVal, heap) {
     if (ptrVal === null || ptrVal === undefined) return 'nullptr';
     const node = heap[ptrVal];
-    if (!node) return String(ptrVal);
-    if (node.freed) return `<span class="ptr-freed">freed [${ptrVal}]</span>`;
-    return `<span class="ptr-target">${ptrVal}</span> <span class="ptr-val">(val: ${node.val})</span>`;
+    if (!node) return escapeHtml(String(ptrVal));
+    if (node.freed) return `<span class="ptr-freed">freed [${escapeHtml(String(ptrVal))}]</span>`;
+    return `<span class="ptr-target">${escapeHtml(String(ptrVal))}</span> <span class="ptr-val">(val: ${escapeHtml(String(node.val))})</span>`;
   }
 
   renderStack(frames, heap) {
@@ -65,7 +75,7 @@ export class MemoryInspector {
       const header = document.createElement('div');
       header.className = 'frame-header';
       header.innerHTML = `
-        <span class="frame-fn">#${idx} ${f.name}(...)</span>
+        <span class="frame-fn">#${idx} ${escapeHtml(f.name)}(...)</span>
         ${idx === frames.length - 1 ? '<span class="active-badge">ACTIVE</span>' : ''}
       `;
       frameDiv.appendChild(header);
@@ -83,9 +93,9 @@ export class MemoryInspector {
           const dot = `<span class="var-dot" style="background:${colorForVar(name)}"></span>`;
           function formatVal(v) {
             if (v === null || v === undefined) return 'nullptr';
-            if (typeof v === 'string' && v.length === 1) return `'${v}'`;
-            if (typeof v === 'string') return `"${v}"`;
-            return String(v);
+            if (typeof v === 'string' && v.length === 1) return `'${escapeHtml(v)}'`;
+            if (typeof v === 'string') return `"${escapeHtml(v)}"`;
+            return escapeHtml(String(v));
           }
 
           let valDesc = '';
@@ -101,21 +111,32 @@ export class MemoryInspector {
             valDesc = `<span class="scalar-val">stack[${info.value.elements.map(formatVal).join(', ')}]</span> <span class="ptr-val">(top: ${formatVal(info.value.elements[info.value.elements.length - 1])})</span>`;
           } else if (info.value && info.value.isQueue) {
             valDesc = `<span class="scalar-val">queue[${info.value.elements.map(formatVal).join(', ')}]</span> <span class="ptr-val">(front: ${formatVal(info.value.elements[0])})</span>`;
+          } else if (info.value && info.value.isClassInstance) {
+            const fieldsDesc = Object.entries(info.value.fields || {})
+              .map(([k, f]) => {
+                const inner = f.value;
+                let desc = formatVal(inner);
+                if (inner && inner.isQueue) desc = `queue[${inner.elements.map(formatVal).join(', ')}]`;
+                else if (inner && inner.isStack) desc = `stack[${inner.elements.map(formatVal).join(', ')}]`;
+                return `${escapeHtml(k)}: ${desc}`;
+              })
+              .join(', ');
+            valDesc = `<span class="scalar-val">${escapeHtml(info.value.className)}{${fieldsDesc}}</span>`;
           } else if (info.value && info.value.isPair) {
             valDesc = `<span class="scalar-val">pair(${formatVal(info.value.first)}, ${formatVal(info.value.second)})</span>`;
           } else if (info.kind === 'char' || (typeof info.value === 'string' && info.value.length === 1)) {
-            valDesc = `<span class="scalar-val">'${info.value}'</span>`;
+            valDesc = `<span class="scalar-val">'${escapeHtml(String(info.value))}'</span>`;
           } else if (info.kind === 'string' || typeof info.value === 'string') {
-            valDesc = `<span class="scalar-val">"${info.value}"</span>`;
+            valDesc = `<span class="scalar-val">"${escapeHtml(String(info.value))}"</span>`;
           } else if (info.kind === 'scalar') {
-            valDesc = `<span class="scalar-val">${info.value}</span>`;
+            valDesc = `<span class="scalar-val">${escapeHtml(String(info.value))}</span>`;
           } else {
             valDesc = this.describePointer(info.value, heap);
           }
 
           tr.innerHTML = `
-            <td class="var-name">${dot}<code>${name}</code></td>
-            <td class="var-kind">${info.kind}</td>
+            <td class="var-name">${dot}<code>${escapeHtml(name)}</code></td>
+            <td class="var-kind">${escapeHtml(info.kind)}</td>
             <td class="var-val">${valDesc}</td>
           `;
           table.appendChild(tr);
@@ -173,7 +194,7 @@ export class MemoryInspector {
     if (leakIds.length > 0) {
       statusHtml += `
         <span class="mem-alert-leak" title="Memory Leak: nodes allocated on heap but unreachable from stack">
-          LEAK: ${leakIds.join(', ')}
+          LEAK: ${leakIds.map(id => escapeHtml(String(id))).join(', ')}
         </span>
       `;
     }

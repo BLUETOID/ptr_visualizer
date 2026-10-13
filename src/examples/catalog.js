@@ -1651,6 +1651,59 @@ ListNode* partitionDemo(ListNode* head, int pivot) {
     }
   },
 
+  lc225_stack_using_queues: {
+    id: 'lc225_stack_using_queues',
+    category: 'C++ STL Containers',
+    label: 'LC 225 · Implement Stack using Queues (OOP Class)',
+    badge: 'OOP & Queues',
+    info: 'Full C++ class with member queues (q1, q2), member methods, and swap(). Demonstrates OOP state visualization.',
+    structureType: 'dsa',
+    entryFn: 'main',
+    defaultArray: '[]',
+    extra: [],
+    code: `class StackUsingQueues {
+    queue<int> q1, q2;
+
+public:
+    void push(int x) {
+        q2.push(x);
+        while (!q1.empty()) {
+            q2.push(q1.front());
+            q1.pop();
+        }
+        swap(q1, q2);
+    }
+
+    int pop() {
+        int val = q1.front();
+        q1.pop();
+        return val;
+    }
+
+    int top() {
+        return q1.front();
+    }
+
+    bool empty() {
+        return q1.empty();
+    }
+};
+
+void main() {
+    StackUsingQueues st;
+    st.push(10);
+    st.push(20);
+    st.push(30);
+
+    int topVal = st.top();
+    int popped = st.pop();
+    bool isEmpty = st.empty();
+}`,
+    buildInitial(arr) {
+      return { heap: {}, heapCounter: 0, colRight: 0, args: [] };
+    }
+  },
+
   stl_pair: {
     id: 'stl_pair',
     category: 'C++ STL Containers',

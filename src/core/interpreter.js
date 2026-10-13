@@ -26,6 +26,7 @@ let frames = [];
 let timeline = [];
 let lastRecordedLine = 1;
 let knownFunctions = {};
+let knownStructs = {};
 let lastDsaAccess = null;
 let cinBuffer = [];
 let cumulativeStdout = '';
@@ -36,17 +37,26 @@ export function getCumulativeStdout() {
 
 export function setCinInput(inputStr) {
   if (typeof inputStr === 'string') {
-    cinBuffer = inputStr.trim().split(/\s+/).filter(Boolean).map(x => isNaN(Number(x)) ? x : Number(x));
+    cinBuffer = inputStr.trim().split(/\s+/).filter(Boolean).map(x => ({
+      raw: String(x),
+      val: isNaN(Number(x)) ? String(x) : Number(x)
+    }));
   } else if (Array.isArray(inputStr)) {
-    cinBuffer = [...inputStr];
+    cinBuffer = inputStr.map(x => ({
+      raw: String(x),
+      val: isNaN(Number(x)) ? String(x) : Number(x)
+    }));
   } else {
     cinBuffer = [];
   }
 }
 
 function readNextCinToken() {
-  if (cinBuffer.length > 0) return { val: cinBuffer.shift(), eof: false };
-  return { val: 0, eof: true };
+  if (cinBuffer.length > 0) {
+    const item = cinBuffer.shift();
+    return { raw: item.raw, val: item.val, eof: false };
+  }
+  return { raw: '0', val: 0, eof: true };
 }
 
 export function resetEngineState(builtHeap = {}, builtCounter = 0, colRight = 0) {
@@ -57,6 +67,7 @@ export function resetEngineState(builtHeap = {}, builtCounter = 0, colRight = 0)
   timeline = [];
   lastRecordedLine = 1;
   knownFunctions = {};
+  knownStructs = {};
   lastDsaAccess = null;
   cinBuffer = [];
   cumulativeStdout = '';
@@ -113,6 +124,9 @@ function getVar(name) {
     if (name in frames[i].vars) {
       return frames[i].vars[name];
     }
+    if (frames[i].thisInstance && frames[i].thisInstance.fields && (name in frames[i].thisInstance.fields)) {
+      return frames[i].thisInstance.fields[name];
+    }
   }
   return undefined;
 }
@@ -132,6 +146,10 @@ function truthy(v) {
 
 export function valueDesc(v) {
   if (v === null || v === undefined) return 'nullptr';
+  if (v && v.isClassInstance) {
+    const fieldStrs = Object.entries(v.fields || {}).map(([k, f]) => `${k}: ${valueDesc(f.value)}`);
+    return `${v.className}{${fieldStrs.join(', ')}}`;
+  }
   if (Array.isArray(v)) return `[${v.map(valueDesc).join(', ')}]`;
   if (v && v.isPair) return `(${valueDesc(v.first)}, ${valueDesc(v.second)})`;
   if (v && v.isStack) return `stack[${v.elements.map(valueDesc).join(', ')}]`;
@@ -281,6 +299,10 @@ function evalExpr(node) {
     }
     case 'Ternary': return truthy(evalExpr(node.cond)) ? evalExpr(node.thenExpr) : evalExpr(node.elseExpr);
     case 'Ident': {
+      if (node.name === 'this') {
+        const curFrame = frames[frames.length - 1];
+        if (curFrame && curFrame.thisInstance) return curFrame.thisInstance;
+      }
       if (node.name === 'null' || node.name === 'NULL' || node.name === 'nullptr') return null;
       if (node.name === 'INT_MAX' || node.name === 'INT32_MAX') return 2147483647;
       if (node.name === 'INT_MIN' || node.name === 'INT32_MIN') return -2147483648;
@@ -313,6 +335,10 @@ function evalExpr(node) {
         if (node.field === 'second') return base.second;
         throw new InterpError(`pair has no member '${node.field}'`, node.line);
       }
+      if (base && base.isClassInstance) {
+        if (node.field in base.fields) return base.fields[node.field].value;
+        throw new InterpError(`Class '${base.className}' has no member '${node.field}'`, node.line);
+      }
       if (base === null || base === undefined) {
         throw new NullDerefError(`Null Pointer Dereference: '${exprToStr(node.obj)}' is nullptr!`, node.line);
       }
@@ -334,6 +360,9 @@ function evalExpr(node) {
     case 'New': {
       const args = node.args.map(evalExpr);
       const type = node.typeName;
+      if (knownStructs[type] && !['ListNode', 'TreeNode', 'DoublyListNode'].includes(type)) {
+        return createClassInstance(type, args, node.line);
+      }
       if (type.startsWith('string') || type.startsWith('std::string')) {
         return args[0] !== undefined ? String(args[0]) : '';
       }
@@ -381,6 +410,20 @@ function evalExpr(node) {
       if (node.callee.type === 'Member') {
         const target = evalExpr(node.callee.obj);
         const method = node.callee.field;
+
+        // Class instance method dispatch
+        if (target && target.isClassInstance) {
+          const structDef = knownStructs[target.className];
+          if (structDef && structDef.methods && structDef.methods[method]) {
+            const args = node.args.map(evalExpr);
+            return callMethod(structDef.methods[method], target, args, node.line);
+          }
+          if (knownFunctions[method]) {
+            const args = node.args.map(evalExpr);
+            return callMethod(knownFunctions[method], target, args, node.line);
+          }
+          throw new InterpError(`Class '${target.className}' has no method '${method}'`, node.line);
+        }
 
         // Cin methods (e.g. cin.tie(NULL))
         if (target && target.isCinStream) {
@@ -892,6 +935,16 @@ function evalExpr(node) {
           return;
         }
       }
+      // Check if this is an implicit member call on thisInstance
+      const curFrame = frames[frames.length - 1];
+      if (curFrame && curFrame.thisInstance) {
+        const structDef = knownStructs[curFrame.thisInstance.className];
+        if (structDef && structDef.methods && (structDef.methods[rawName] || structDef.methods[fnName])) {
+          const methodFn = structDef.methods[rawName] || structDef.methods[fnName];
+          const args = node.args.map(evalExpr);
+          return callMethod(methodFn, curFrame.thisInstance, args, node.line);
+        }
+      }
       const fn = knownFunctions[rawName] || knownFunctions[fnName];
       if (!fn) throw new InterpError(`Undefined function '${rawName}'`, node.line);
       const args = node.args.map(evalExpr);
@@ -926,12 +979,24 @@ function evalExpr(node) {
       }
       if (node.op === '>>') {
         if (l && l.isCinStream) {
-          const token = readNextCinToken();
-          const val = token.val;
-          const eof = token.eof;
+          const res = readNextCinToken();
+          const eof = res.eof;
           if (!eof) {
             if (node.right.type === 'Ident') {
-              setVar(node.right.name, val, typeof val === 'number' ? 'scalar' : 'string');
+              const existing = getVar(node.right.name);
+              let val = res.val;
+              let kind = typeof val === 'number' ? 'scalar' : 'string';
+              if (existing && existing.kind === 'string') {
+                val = res.raw;
+                kind = 'string';
+              } else if (existing && existing.kind === 'char') {
+                val = res.raw.slice(0, 1);
+                kind = 'char';
+              } else if (existing && existing.kind === 'scalar') {
+                val = typeof res.val === 'number' ? res.val : (isNaN(Number(res.raw)) ? 0 : Number(res.raw));
+                kind = 'scalar';
+              }
+              setVar(node.right.name, val, kind);
               record(node.line, `cin >> ${node.right.name} (read ${val})`, {
                 dsaAccess: { type: 'read', varName: node.right.name, value: val }
               });
@@ -939,6 +1004,10 @@ function evalExpr(node) {
               const arr = evalExpr(node.right.obj);
               const idx = evalExpr(node.right.index);
               if (Array.isArray(arr)) {
+                let val = res.val;
+                if (arr.isChar) {
+                  val = res.raw.slice(0, 1);
+                }
                 arr[idx] = val;
                 record(node.line, `cin >> ${exprToStr(node.right.obj)}[${idx}] (read ${val})`, {
                   dsaAccess: { type: 'write', arrayName: exprToStr(node.right.obj), index: idx, value: val }
@@ -1166,6 +1235,13 @@ function assignTo(node, value, line) {
   }
   if (node.type === 'Member') {
     const base = evalExpr(node.obj);
+    if (base && base.isClassInstance) {
+      if (node.field in base.fields) {
+        base.fields[node.field].value = value;
+        return;
+      }
+      throw new InterpError(`Class '${base.className}' has no member '${node.field}'`, line);
+    }
     if (base && base.isPair) {
       if (node.field === 'first') { base.first = value; return; }
       if (node.field === 'second') { base.second = value; return; }
@@ -1263,6 +1339,11 @@ function execVarDeclGroup(stmt) {
       }
       value.isChar = isChar;
       kind = 'array';
+      desc = `${stmt.varType.name} ${decl.name} = ${valueDesc(value)}`;
+    } else if (knownStructs[stmt.varType.name] && !['ListNode', 'TreeNode', 'DoublyListNode'].includes(stmt.varType.name)) {
+      const ctorArgs = decl.ctorArgs ? decl.ctorArgs.map(evalExpr) : [];
+      value = createClassInstance(stmt.varType.name, ctorArgs, stmt.line);
+      kind = 'object';
       desc = `${stmt.varType.name} ${decl.name} = ${valueDesc(value)}`;
     } else if (decl.ctorArgs) {
       const args = decl.ctorArgs.map(evalExpr);
@@ -1510,6 +1591,131 @@ function executeStmt(stmt) {
   }
 }
 
+export function createClassInstance(className, ctorArgs = [], line = 1) {
+  const structDef = knownStructs[className];
+  const instance = {
+    isClassInstance: true,
+    className,
+    fields: {}
+  };
+
+  if (structDef && structDef.fields) {
+    for (const fieldGroup of structDef.fields) {
+      if (fieldGroup.type === 'VarDeclGroup') {
+        const typeName = fieldGroup.varType.name;
+        for (const decl of fieldGroup.decls) {
+          const isChar = typeName.includes('<char');
+          let val, kind;
+          if (decl.isArray) {
+            val = [];
+            kind = 'array';
+          } else if (typeName.startsWith('priority_queue') || typeName.startsWith('std::priority_queue')) {
+            val = { isPriorityQueue: true, elements: [], isMinHeap: typeName.includes('greater') };
+            kind = 'priority_queue';
+          } else if (typeName.startsWith('set') || typeName.startsWith('std::set') || typeName.startsWith('unordered_set') || typeName.startsWith('std::unordered_set')) {
+            val = { isSet: true, elements: [] };
+            kind = 'set';
+          } else if (typeName.startsWith('map') || typeName.startsWith('std::map') || typeName.startsWith('unordered_map') || typeName.startsWith('std::unordered_map')) {
+            val = { isMap: true, entries: {} };
+            kind = 'map';
+          } else if (typeName.startsWith('stack') || typeName.startsWith('std::stack')) {
+            val = { isStack: true, elements: [], isChar };
+            kind = 'stack';
+          } else if (typeName.startsWith('queue') || typeName.startsWith('std::queue')) {
+            val = { isQueue: true, elements: [], isChar };
+            kind = 'queue';
+          } else if (typeName.startsWith('deque') || typeName.startsWith('std::deque')) {
+            val = { isDeque: true, elements: [], isChar };
+            kind = 'deque';
+          } else if (typeName.startsWith('pair') || typeName.startsWith('std::pair')) {
+            val = { isPair: true, first: 0, second: 0 };
+            kind = 'pair';
+          } else if (typeName.startsWith('vector') || typeName.startsWith('std::vector')) {
+            val = [];
+            val.isChar = isChar;
+            kind = 'array';
+          } else if (typeName === 'string' || typeName === 'std::string') {
+            val = '';
+            kind = 'string';
+          } else if (typeName === 'char') {
+            val = '\0';
+            kind = 'char';
+          } else if (typeName === 'bool') {
+            val = false;
+            kind = 'scalar';
+          } else if (decl.isPointer || fieldGroup.varType.pointer) {
+            val = null;
+            kind = 'pointer';
+          } else if (knownStructs[typeName] && !['ListNode', 'TreeNode', 'DoublyListNode'].includes(typeName)) {
+            val = createClassInstance(typeName, decl.ctorArgs ? decl.ctorArgs.map(evalExpr) : [], line);
+            kind = 'object';
+          } else {
+            val = 0;
+            kind = 'scalar';
+          }
+          if (decl.init) {
+            val = evalExpr(decl.init);
+          }
+          instance.fields[decl.name] = { value: val, kind };
+        }
+      }
+    }
+  }
+
+  // Execute constructor if defined
+  if (structDef && structDef.constructors && structDef.constructors.length > 0) {
+    const ctor = structDef.constructors.find(c => c.params.length === ctorArgs.length) || structDef.constructors[0];
+    if (ctor && ctor.body && ctor.body.length > 0) {
+      callMethod(ctor, instance, ctorArgs, line);
+    }
+  }
+
+  return instance;
+}
+
+function callMethod(fn, thisInstance, argVals, callLine) {
+  if (frames.length > 50) throw new StepLimitError('Recursion stack overflow (max depth 50)');
+  const frameName = `${thisInstance.className}::${fn.name}`;
+  frames.push({ name: frameName, vars: {}, thisInstance });
+
+  setVar('this', thisInstance, 'pointer');
+
+  fn.params.forEach((param, i) => {
+    let rawVal = argVals[i];
+    if (rawVal === undefined && param.defaultVal) {
+      rawVal = evalExpr(param.defaultVal);
+    }
+    const k = Array.isArray(rawVal) || param.isArray ? 'array' : (param.type.pointer ? 'pointer' : (param.type.name === 'char' ? 'char' : 'scalar'));
+    setVar(param.name, rawVal, k);
+  });
+
+  record(
+    fn.body.length ? fn.body[0].line : callLine,
+    `→ Call ${frameName}(${fn.params.map((pp, i) => `${pp.name}=${valueDesc(argVals[i])}`).join(', ')})`,
+    { frameChange: true }
+  );
+
+  let retVal = null;
+  try {
+    fn.body.forEach(executeStmt);
+  } catch (e) {
+    if (e instanceof ReturnSignal) {
+      retVal = e.value;
+    } else {
+      frames.pop();
+      throw e;
+    }
+  }
+
+  record(callLine, `← Return from ${frameName} ${retVal !== null ? `(${valueDesc(retVal)})` : ''}`, {
+    frameChange: true,
+    highlight: typeof retVal === 'string' ? [retVal] : []
+  });
+
+  frames.pop();
+  return retVal;
+}
+
 function callFunction(fn, argVals, callLine) {
   if (frames.length > 50) throw new StepLimitError('Recursion stack overflow (max depth 50)');
   frames.push({ name: fn.name, vars: {} });
@@ -1549,8 +1755,9 @@ function callFunction(fn, argVals, callLine) {
   return retVal;
 }
 
-export function runProgram(fn, argVals, allFunctions = {}, cinInput = null) {
+export function runProgram(fn, argVals, allFunctions = {}, cinInput = null, allStructs = {}) {
   knownFunctions = allFunctions;
+  knownStructs = allStructs;
   frames = [{ name: fn.name, vars: {} }];
   timeline = [];
   if (cinInput !== null && cinInput !== undefined) {

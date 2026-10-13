@@ -2,6 +2,16 @@
  * Playback Controls & Timeline Scrubber
  */
 
+function escapeHtml(text) {
+  if (typeof text !== 'string') return String(text ?? '');
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export class ControlsManager {
   constructor(options) {
     this.playBtn = document.getElementById(options.playBtnId);
@@ -134,7 +144,7 @@ export class ControlsManager {
       badge = '<span class="exp-badge exp-call">CALL</span>';
     }
 
-    this.explanationBanner.innerHTML = `${badge} <span class="exp-text">${text}</span>`;
+    this.explanationBanner.innerHTML = `${badge} <span class="exp-text">${escapeHtml(text)}</span>`;
     this.explanationBanner.classList.toggle('error', !!(meta.error || isError));
   }
 }

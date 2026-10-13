@@ -85,6 +85,7 @@ export class DsaRenderer {
     const arrays = [];
     const stacks = [];
     const queues = [];
+    const deques = [];
     const priorityQueues = [];
     const sets = [];
     const maps = [];
@@ -100,9 +101,36 @@ export class DsaRenderer {
       return false;
     };
 
+    const extractClassContainers = (objName, instance) => {
+      if (!instance || !instance.isClassInstance || !instance.fields) return;
+      Object.entries(instance.fields).forEach(([fName, fInfo]) => {
+        const fVal = fInfo.value;
+        const fullName = objName ? `${objName}.${fName}` : fName;
+        if (fVal && fVal.isPriorityQueue && !priorityQueues.find(pq => pq.name === fullName || pq.name === fName)) {
+          priorityQueues.push({ name: fullName, value: fVal.elements, isMinHeap: fVal.isMinHeap });
+        } else if (fVal && fVal.isSet && !sets.find(s => s.name === fullName || s.name === fName)) {
+          sets.push({ name: fullName, value: fVal.elements });
+        } else if (fVal && fVal.isMap && !maps.find(m => m.name === fullName || m.name === fName)) {
+          maps.push({ name: fullName, value: fVal.entries });
+        } else if (fVal && fVal.isStack && !stacks.find(s => s.name === fullName || s.name === fName)) {
+          stacks.push({ name: fullName, value: fVal.elements });
+        } else if (fVal && fVal.isQueue && !queues.find(q => q.name === fullName || q.name === fName)) {
+          queues.push({ name: fullName, value: fVal.elements });
+        } else if (fVal && fVal.isDeque && !deques.find(dq => dq.name === fullName || dq.name === fName)) {
+          deques.push({ name: fullName, value: fVal.elements });
+        } else if (fVal && fVal.isPair && !pairs.find(p => p.name === fullName || p.name === fName)) {
+          pairs.push({ name: fullName, value: fVal });
+        } else if (Array.isArray(fVal) && !arrays.find(a => a.name === fullName || a.name === fName)) {
+          arrays.push({ name: fullName, value: fVal });
+        }
+      });
+    };
+
     Object.entries(allVars).forEach(([name, info]) => {
       const val = info.value;
-      if (val && val.isPriorityQueue) {
+      if (val && val.isClassInstance) {
+        extractClassContainers(name, val);
+      } else if (val && val.isPriorityQueue) {
         priorityQueues.push({ name, value: val.elements, isMinHeap: val.isMinHeap });
       } else if (val && val.isSet) {
         sets.push({ name, value: val.elements });
@@ -112,6 +140,8 @@ export class DsaRenderer {
         stacks.push({ name, value: val.elements });
       } else if (val && val.isQueue) {
         queues.push({ name, value: val.elements });
+      } else if (val && val.isDeque) {
+        deques.push({ name, value: val.elements });
       } else if (val && val.isPair) {
         pairs.push({ name, value: val });
       } else if (!isPointerValue(val, info) && (info.kind === 'string' || (typeof val === 'string' && val.length > 0 && !info.isCinStream && info.kind !== 'char'))) {
@@ -129,12 +159,22 @@ export class DsaRenderer {
       }
     });
 
+    // Check active frame thisInstance
+    if (activeFrame && activeFrame.thisInstance) {
+      extractClassContainers('', activeFrame.thisInstance);
+    }
+
     // If no explicit container was found in active frame, check outer frames
-    if (arrays.length === 0 && strings.length === 0 && stacks.length === 0 && queues.length === 0 && priorityQueues.length === 0 && sets.length === 0 && maps.length === 0 && pairs.length === 0) {
+    if (arrays.length === 0 && strings.length === 0 && stacks.length === 0 && queues.length === 0 && deques.length === 0 && priorityQueues.length === 0 && sets.length === 0 && maps.length === 0 && pairs.length === 0) {
       for (let i = frames.length - 2; i >= 0; i--) {
+        if (frames[i].thisInstance) {
+          extractClassContainers('', frames[i].thisInstance);
+        }
         Object.entries(frames[i].vars).forEach(([name, info]) => {
           const val = info.value;
-          if (val && val.isPriorityQueue && !priorityQueues.find(pq => pq.name === name)) {
+          if (val && val.isClassInstance) {
+            extractClassContainers(name, val);
+          } else if (val && val.isPriorityQueue && !priorityQueues.find(pq => pq.name === name)) {
             priorityQueues.push({ name, value: val.elements, isMinHeap: val.isMinHeap });
           } else if (val && val.isSet && !sets.find(s => s.name === name)) {
             sets.push({ name, value: val.elements });
@@ -144,6 +184,8 @@ export class DsaRenderer {
             stacks.push({ name, value: val.elements });
           } else if (val && val.isQueue && !queues.find(q => q.name === name)) {
             queues.push({ name, value: val.elements });
+          } else if (val && val.isDeque && !deques.find(dq => dq.name === name)) {
+            deques.push({ name, value: val.elements });
           } else if (val && val.isPair && !pairs.find(p => p.name === name)) {
             pairs.push({ name, value: val });
           } else if (typeof val === 'string' && !isPointerValue(val, info) && info.kind !== 'pointer' && !info.isCinStream && info.kind !== 'char' && !strings.find(s => s.name === name)) {
@@ -152,11 +194,11 @@ export class DsaRenderer {
             arrays.push({ name, value: Array.isArray(val) ? val : [] });
           }
         });
-        if (arrays.length > 0 || strings.length > 0 || stacks.length > 0 || queues.length > 0 || priorityQueues.length > 0) break;
+        if (arrays.length > 0 || strings.length > 0 || stacks.length > 0 || queues.length > 0 || deques.length > 0 || priorityQueues.length > 0) break;
       }
     }
 
-    const hasContainers = arrays.length > 0 || strings.length > 0 || stacks.length > 0 || queues.length > 0 || priorityQueues.length > 0 || sets.length > 0 || maps.length > 0 || pairs.length > 0;
+    const hasContainers = arrays.length > 0 || strings.length > 0 || stacks.length > 0 || queues.length > 0 || deques.length > 0 || priorityQueues.length > 0 || sets.length > 0 || maps.length > 0 || pairs.length > 0;
 
     // If still no containers, show a clean placeholder
     if (!hasContainers) {
@@ -201,6 +243,12 @@ export class DsaRenderer {
     // 6. Render STL Queues
     queues.forEach((q) => {
       curY = this.renderQueue(q, meta, 40, curY, heap);
+      curY += itemGap;
+    });
+
+    // 6.5. Render STL Deques
+    deques.forEach((dq) => {
+      curY = this.renderDeque(dq, meta, 40, curY, heap);
       curY += itemGap;
     });
 
@@ -803,6 +851,91 @@ export class DsaRenderer {
     }
 
     return startY + queueY + cellH + 30;
+  }
+
+  renderDeque(dqObj, meta, startX, startY, heap = {}) {
+    const elements = dqObj.value;
+    const name = dqObj.name;
+    const count = elements.length;
+    const cellW = 58;
+    const cellH = 46;
+    const gap = 6;
+
+    const dequeGroup = svgEl('g', this.container, {
+      class: 'stl-deque-wrap',
+      transform: `translate(${startX}, ${startY})`
+    });
+
+    const title = svgEl('text', dequeGroup, { class: 'dsa-array-title', x: 0, y: 15 });
+    title.textContent = `std::deque ${name}`;
+
+    const sizeText = svgEl('text', dequeGroup, { class: 'dsa-array-size', x: title.textContent.length * 9 + 15, y: 15 });
+    sizeText.textContent = `(size: ${count})`;
+
+    const dequeY = 35;
+
+    // Front marker
+    if (count > 0) {
+      const frontTxt = svgEl('text', dequeGroup, {
+        class: 'dsa-cell-index-text',
+        x: cellW / 2,
+        y: dequeY - 10,
+        fill: '#34d399'
+      });
+      frontTxt.textContent = 'FRONT';
+    }
+
+    for (let i = 0; i < count; i++) {
+      const cellX = i * (cellW + gap);
+      const val = elements[i];
+
+      const cell = svgEl('g', dequeGroup, {
+        class: 'dsa-cell',
+        transform: `translate(${cellX}, ${dequeY})`
+      });
+
+      svgEl('rect', cell, {
+        class: 'dsa-cell-box',
+        width: cellW,
+        height: cellH,
+        rx: 6,
+        ry: 6
+      });
+
+      const txt = svgEl('text', cell, {
+        class: 'dsa-cell-val',
+        x: cellW / 2,
+        y: cellH / 2,
+        'font-size': 15
+      });
+      const isPtr = attachPointerInteractions(cell, txt, val, heap);
+      if (!isPtr) {
+        txt.textContent = typeof val === 'string' && val.length === 1 ? `'${val}'` : (val !== undefined ? val : '');
+      }
+
+      const idxTxt = svgEl('text', cell, {
+        class: 'dsa-cell-index-text',
+        x: cellW / 2,
+        y: cellH + 16,
+        fill: 'var(--text-muted, #94a3b8)',
+        'font-size': 11
+      });
+      idxTxt.textContent = i;
+    }
+
+    // Back marker
+    if (count > 0) {
+      const backX = (count - 1) * (cellW + gap) + cellW / 2;
+      const backTxt = svgEl('text', dequeGroup, {
+        class: 'dsa-cell-index-text',
+        x: backX,
+        y: dequeY - 10,
+        fill: '#fbbf24'
+      });
+      backTxt.textContent = 'BACK';
+    }
+
+    return startY + dequeY + cellH + 36;
   }
 
   render2DMatrix(arrObj, allPointers, meta, startX, startY) {

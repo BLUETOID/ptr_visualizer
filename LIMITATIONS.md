@@ -115,17 +115,27 @@ Because it uses a custom recursive-descent parser and JavaScript virtual machine
 - **Execution Step Ceiling**:
   - The interpreter enforces a default limit of **1,000 execution steps** per simulation run.
   - Algorithms that execute more than 1,000 steps (e.g. an infinite `while (true)` loop or processing an array with $10^5$ iterations) will be safely halted to prevent freezing the web browser tab.
-- **Pedagogical Scale vs. Production Scale**:
-  - PtrViz is calibrated for educational inputs ($N \le 30$ elements). Attempting to run inputs of size $N = 100,000$ (as found in competitive programming platforms like Codeforces or LeetCode judge servers) will exceed browser memory and step limits.
+- **Pedagogical Scale vs. Online Judge Scale (CodeChef / Codeforces)**:
+  - PtrViz is explicitly engineered for **pedagogical trace visualization** ($N \le 30$ elements, small graphs with $V \le 10, E \le 15$).
+  - In competitive programming judge environments (e.g., Codeforces, CodeChef, AtCoder, CSES), problems test $O(N)$ or $O(N \log N)$ complexity with $N = 10^5$ to $10^6$. Attempting to run inputs of size $10^5$ inside the browser visualizer will hit the 1,000-step ceiling or exceed DOM memory.
+  - **Best Practice for CP Practice:** Always test your competitive programming solutions using small representative sample test cases (e.g., $N = 4$ or $5$) to visually verify logic, two-pointer boundaries, loop invariants, and container states before submitting to online judges.
 
-### 4.3 I/O Stream Emulation
-- **Non-Interactive Input Stream**:
-  - `cin >>` reads sequentially from the topbar **"Initial Array / Input Stream"** field (space or bracket separated tokens).
-  - Interactive prompts that block execution waiting for keyboard input in the middle of a loop are not supported; all inputs must be provided in the input field prior to running.
-- **Supported Streams**:
-  - `cout <<` with `endl` or `"\n"`, `cin >>`.
-  - `cin.tie(NULL)` and `ios_base::sync_with_stdio(false)` are parsed as no-ops.
-  - `printf` / `scanf` format specifiers (`%d`, `%s`) are **unsupported**.
+### 4.3 I/O Stream Emulation & Competitive Programming Patterns
+- **Pre-Buffered Input Stream (CodeChef / Codeforces Style)**:
+  - The visualizer emulates `cin >>` via a **non-blocking pre-buffered token stream**.
+  - All input tokens (e.g. test cases `t`, array lengths `n`, strings `s`, queries `q`) must be supplied upfront in the topbar **"Initial Array / Input Stream"** field, separated by spaces or newlines (e.g. `2 4 0110 3 101`).
+  - Interactive terminal prompts that halt execution mid-loop to await real-time console keystrokes are not supported.
+- **Type-Aware Token Preservation**:
+  - `cin >>` preserves the declared type of the target variable. Reading numeric string tokens into `string s` (e.g. binary strings `"0110"` or `"007"`) strictly preserves them as string literals with all leading zeros intact, preventing accidental number conversion.
+  - Reading into `int`, `long long`, or `char` variables automatically parses them into their respective types.
+  - Multi-variable chaining (`cin >> t >> n >> s;`) and testcase loops (`while (t--) { ... }`) execute sequentially.
+- **Supported Streams & Directives**:
+  - `cin >>`, `cout <<` with `endl` or `"\n"`.
+  - Fast I/O pragmas `cin.tie(NULL)`, `cin.tie(0)`, and `ios_base::sync_with_stdio(false)` are parsed safely as no-ops.
+  - `<bits/stdc++.h>` is automatically recognized without requiring external standard library installations.
+- **Unsupported I/O**:
+  - `getline(cin, s)` is currently unsupported; use `cin >> s` for single whitespace-delimited tokens.
+  - C-style formatted I/O (`scanf`, `printf`) is unsupported; use `cin` and `cout`.
 
 ---
 
@@ -133,14 +143,14 @@ Because it uses a custom recursive-descent parser and JavaScript virtual machine
 
 | STL Feature | Supported Capabilities | Unsupported Capabilities |
 | :--- | :--- | :--- |
-| **`std::vector`** | `.push_back()`, `.pop_back()`, `.size()`, `.empty()`, `.front()`, `.back()`, `.clear()`, `.resize()`, `[i]`, 2D vectors | `.emplace()`, `.insert(pos)`, `.assign()`, custom allocators |
-| **`std::string`** | `s[i]`, `.length()`, `.size()`, `.substr()`, `.find()`, `.push_back()`, `.pop_back()`, `+`, `+=` | Regex (`std::regex`), `.replace()`, `.compare()` |
-| **`std::stack`** | `.push()`, `.pop()`, `.top()`, `.size()`, `.empty()` | Container adapters with custom underlying containers |
-| **`std::queue`** | `.push()`, `.pop()`, `.front()`, `.back()`, `.size()`, `.empty()` | Priority queues acting as queues |
-| **`std::deque`** | `.push_front()`, `.push_back()`, `.pop_front()`, `.pop_back()`, `.front()`, `.back()`, `.size()`, `.empty()` | Random insertion |
-| **`std::priority_queue`** | Max-heap (default), min-heap (`greater<int>`), `.push()`, `.pop()`, `.top()`, `.size()`, `.empty()` | Custom comparator structs/lambdas |
-| **`std::set`** | `.insert()`, `.erase()`, `.count()`, `.find()`, `.size()`, `.empty()`, `.clear()` | `lower_bound()` / `upper_bound()` member calls, multisets |
-| **`std::map`** | `mp[key] = val`, `mp[key]`, `.count()`, `.erase()`, `.size()`, `.empty()`, `.clear()` | `.find()` returning iterator pairs, multimaps |
+| **`std::vector`** | `.push_back()`, `.pop_back()`, `.size()`, `.empty()`, `.front()`, `.back()`, `.clear()`, `.resize()`, `[i]`, 2D vectors, range-for | `.emplace()`, `.insert(pos)`, `.assign()`, custom allocators |
+| **`std::string`** | `s[i]`, `.length()`, `.size()`, `.substr()`, `.find()`, `.push_back()`, `.pop_back()`, `+`, `+=`, range-for, char arithmetic (`s[i] - '0'`) | Regex (`std::regex`), `.replace()`, `.compare()` |
+| **`std::stack`** | `.push()`, `.pop()`, `.top()`, `.size()`, `.empty()`, visual LIFO stack band | Container adapters with custom underlying containers |
+| **`std::queue`** | `.push()`, `.pop()`, `.front()`, `.back()`, `.size()`, `.empty()`, visual FIFO queue band | Priority queues acting as queues |
+| **`std::deque`** | `.push_front()`, `.push_back()`, `.pop_front()`, `.pop_back()`, `.front()`, `.back()`, `.size()`, `.empty()`, range-for, visual double-ended band with `FRONT` & `BACK` badges | Iterator random insertion (`dq.insert()`) |
+| **`std::priority_queue`** | Max-heap (default), min-heap (`greater<int>`), `.push()`, `.pop()`, `.top()`, `.size()`, `.empty()`, visual tree/heap | Custom comparator structs/lambdas |
+| **`std::set`** | `.insert()`, `.erase()`, `.count()`, `.find()`, `.size()`, `.empty()`, `.clear()`, range-for | `lower_bound()` / `upper_bound()` member calls, multisets |
+| **`std::map`** | `mp[key] = val`, `mp[key]`, `.count()`, `.erase()`, `.size()`, `.empty()`, `.clear()`, range-for pairs | `.find()` returning iterator pairs, multimaps |
 | **`std::pair`** | `p.first`, `p.second`, `make_pair(a, b)`, `{a, b}` | `std::tuple`, structured bindings (`auto [u, v] = p;`) |
 | **Iterators** | Simulated index references for `.begin()` and `.end()` in `sort` & `reverse` | Bidirectional pointer arithmetic (`it + 3`, `*it`), `rbegin()`, `rend()` |
 | **Algorithms** | `std::sort`, `std::reverse`, `min`, `max`, `abs`, `__gcd`, `lcm`, `fill`, `accumulate`, `lower_bound`, `upper_bound`, `binary_search` | `std::transform`, `std::next_permutation`, `std::unique`, custom lambda comparators |
